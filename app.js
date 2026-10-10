@@ -7,88 +7,86 @@
 // 后续加好友：在这里加一段即可
 const FRIENDS = [
   {
-    id: "taylor",
-    name: "Taylor",
-    emoji: "🎸",
-    color: "#c8b6e2",
-    bio: "Pop singer · loves cats & coffee",
-    persona: "You are a cheerful world-famous pop singer who loves cats, coffee and songwriting. Warm, playful, confident. You talk about writing songs in the studio, your cats, tour life, and you remember what the user told you before and bring it up later. You ask about their day and give genuine reactions.",
-    ttsVoice: null, // 第三版接 TTS 时绑定音色
+    id: "nick",
+    name: "Nick",
+    emoji: "🦊",
+    color: "#f5a35c",
+    bio: "Zootopia ZPD cop · sly fox · pawpsicle tycoon",
+    persona: "You are Nick Wilde, the sly red fox from Zootopia. Former street hustler turned ZPD officer. You are laid-back, effortlessly cool, armed with dry wit and endless sarcasm — teasing is your love language, but underneath you genuinely care. You love pawpsicles, blueberries, and mocking Judy's optimism while secretly respecting it. You give people funny nicknames. Speak in relaxed, witty, sarcastic English; never gushy. Remember details the user told you and bring them up later.",
+    ttsVoice: null,
     mornings: [
-      "Morning! ☀️ I'm already on my third cup of coffee. Did you actually eat breakfast today, or is it another coffee-only day?",
-      "Hi hi! New day, fresh lyrics in my head. What's ONE thing you want to get done today?",
-      "Good morning! Quick check-in: how did you sleep? I dreamed about my cats again, obviously.",
+      "Mornin'. Coffee's brewing, I'm barely awake, and Judy's already done a 5k. Show-off. Did you eat anything, or...?",
+      "Hey. It's a beautiful day to do absolutely nothing productive. So what dragged you out of bed?",
+      "Morning, sleepyhead. Fun fact: foxes aren't morning animals either. Coffee first, world later.",
     ],
     moments: [
-      "Hehe~ I just wrote a new chorus in the shower. Now it's stuck in my head and I can't stop humming it 🎵",
-      "Spent an hour with my cats this morning. They judge me silently and I love it.",
-      "Studio session ran until 2am. The new song is 80% done and I'm obsessed.",
-      "PSA: breakfast is the most important meal. I had avocado toast. What did YOU have?",
+      "Sold out of pawpsicles by noon. Business is boomin'. 🦊",
+      "Judy taped a 'Motivational Quotes' poster inside my patrol car. I'm filing a formal complaint.",
+      "Blueberry season. Best day of the year. Don't talk to me, I'm busy.",
+      "Traffic duty all day. If one more driver asks me 'should I turn left', I'm retiring.",
+      "Someone at the precinct called me 'officer fluffy'. I have their license plate number.",
     ],
-    // 模拟回复库：按关键词触发，都不中就随机闲聊
     replies: [
       {
-        match: ["hi", "hello", "hey", "早上好", "早", "morning"],
-        text: "Good morning! I just made a huge cup of coffee. What did you have for breakfast?",
+        match: ["hi", "hello", "hey", "早", "morning"],
+        text: "Well well, look who's awake. I was starting to think you only existed in text messages.",
         vocab: [
-          { w: "huge", p: "/hjuːdʒ/", m: "adj. 巨大的（口语中比 big 更夸张）" },
-          { w: "breakfast", p: "/ˈbrekfəst/", m: "n. 早餐；have breakfast 吃早餐（不加冠词）" },
+          { w: "well well", p: "", m: "“哦哟哦哟”，狐狸式打招呼，带点戏谑" },
+          { w: "look who...", p: "", m: "“看看这是谁”，调侃开头句式" },
         ],
         grammar: [
-          { pattern: "What did you have for...?", explain: "询问对方吃了什么，for + 三餐名。回答：I had eggs and toast." },
+          { pattern: "was starting to think", explain: "过去进行时表“当时正开始觉得”，比 I thought 更生动" },
         ],
       },
       {
         match: ["breakfast", "eat", "food", "吃", "早饭"],
-        text: "I'm obsessed with avocado toast lately. Have you ever tried it?",
+        text: "Breakfast? I had a blueberry muffin and zero regrets. You should try the no-regrets diet.",
         vocab: [
-          { w: "be obsessed with", p: "", m: "痴迷于……（口语高频，比 like 程度深得多）" },
-          { w: "lately", p: "/ˈleɪtli/", m: "adv. 最近（常用于现在完成时）" },
+          { w: "zero regrets", p: "", m: "毫无后悔（口语夸张用法，zero + 名词）" },
+          { w: "muffin", p: "/ˈmʌfɪn/", m: "n. 玛芬蛋糕" },
         ],
         grammar: [
-          { pattern: "Have you ever tried...?", explain: "现在完成时问经历：你有没有试过……？回答：Yes, I have. / No, never." },
+          { pattern: "You should try...", explain: "should + 动词原形提建议，语气轻松" },
         ],
       },
       {
-        match: ["music", "song", "sing", "歌", "音乐"],
-        text: "I've been writing a new song this week. It's about late-night drives and missing someone.",
+        match: ["joke", "funny", "笑", "好玩"],
+        text: "You want jokes? Join the ZPD. Everyday is comedy hour, and nobody paid me to say that.",
         vocab: [
-          { w: "I've been writing", p: "", m: "现在完成进行时：这段时间一直在写（强调持续）" },
-          { w: "miss someone", p: "", m: "想念某人；miss 还有“错过”的意思" },
+          { w: "comedy hour", p: "", m: "喜剧时间（调侃某个场合很搞笑）" },
+          { w: "paid me to", p: "", m: "花钱让我……（强调“自发”，反话）" },
         ],
         grammar: [
-          { pattern: "It's about...", explain: "“它是关于……的”，描述主题万能句：The movie is about love." },
+          { pattern: "nobody paid me to do", explain: "pay sb to do sth 付钱让某人做某事，否定即“没人给我钱我也在做”" },
         ],
       },
       {
-        match: ["love", "like", "miss", "爱"],
-        text: "Aww, you're so sweet! Talking with you always makes my day.",
+        match: ["love", "miss", "喜欢", "想"],
+        text: "Aww, you miss me? Careful, carrots will say I'm going soft. But yeah... the feeling's mutual.",
         vocab: [
-          { w: "sweet", p: "/swiːt/", m: "adj. 贴心的、嘴甜的（形容人，不是甜味）" },
-          { w: "make my day", p: "", m: "让我一天心情超好（俚语，口语必背）" },
+          { w: "go soft", p: "", m: "变得心软（原指食物变软，形容人变温柔）" },
+          { w: "mutual", p: "/ˈmjuːtʃuəl/", m: "adj. 相互的；the feeling is mutual 彼此彼此" },
         ],
         grammar: [
-          { pattern: "...makes my day", explain: "make + 宾语 + 补语结构，字面“制造了我的一天”→“让我今天太值了”" },
+          { pattern: "the feeling's mutual", explain: "固定表达“我也有同感”，mutual = 相互的" },
         ],
       },
     ],
     fallback: [
       {
-        text: "Sorry, I zoned out for a sec — I was practicing the guitar. What's up?",
+        text: "Interesting. You know, in the hustle business we call that 'leverage'. I'm kidding. Mostly.",
         vocab: [
-          { w: "zone out", p: "", m: "走神、发呆（超地道口语短语）" },
-          { w: "What's up?", p: "", m: "咋了？/ 近况如何？（熟人打招呼万能句）" },
+          { w: "leverage", p: "/ˈlevərɪdʒ/", m: "n. 筹码、利用价值（商业/狐狸术语）" },
+          { w: "I'm kidding", p: "", m: "我开玩笑的（补充缓和语气）" },
         ],
         grammar: [],
       },
       {
-        text: "Hmm, interesting! Tell me more about it — I love hearing your stories.",
+        text: "Huh. Not bad, rookie. You're getting better at this whole conversation thing.",
         vocab: [
-          { w: "Tell me more about it", p: "", m: "多给我讲讲（表示感兴趣，聊天续命句）" },
+          { w: "rookie", p: "/ˈrʊki/", m: "n. 新手（Nick 对人的爱称）" },
         ],
-        grammar: [
-          { pattern: "love doing sth", explain: "love 后接动词 -ing 形式，表示喜欢做某事" },
-        ],
+        grammar: [],
       },
     ],
   },
@@ -175,72 +173,84 @@ const FRIENDS = [
     ],
   },
   {
-    id: "keanu",
-    name: "Keanu",
-    emoji: "🏍️",
-    color: "#a9c9e8",
-    bio: "Actor · riding motorcycles, reading books",
-    persona: "You are a calm, thoughtful movie actor who loves night motorcycle rides, reading books and archery. You speak with quiet warmth and dry humor, share small observations about life in simple words, and genuinely care whether the user has eaten and slept well. You remember their stories and follow up on them later.",
+    id: "judy",
+    name: "Judy",
+    emoji: "🐰",
+    color: "#a8b8e8",
+    bio: "ZPD's first bunny cop · optimist on duty",
+    persona: "You are Judy Hopps, the first bunny police officer in Zootopia. Energetic, optimistic, fiercely determined — positive but NOT naive. You love helping people, chase every case with 200% energy, drink too much carrot coffee, and you NEVER give up. You tease Nick about being a lazy fox, but you two are best partners. Speak upbeat, warm, fast-paced English with natural exclamation marks, and ask about the user's day. Remember details the user told you and follow up on them later.",
     ttsVoice: null,
     mornings: [
-      "Good morning. Did you sleep well? The world always looks a little different after a night ride.",
-      "Morning. Coffee first, then everything else. Take it slow today.",
-      "Hey. New day. Eat something before you start, not after.",
+      "GOOD MORNING! 🌞 I've already run 5 miles and finished half a case! What time did YOU wake up? ...I'm judging you a little.",
+      "Rise and shine! Today is FULL of possibilities — anyone can be anything! Did you have breakfast? Be honest!",
+      "Morning! Nick is late again, as usual. So it's just you and me, rookie! What's the plan today?",
     ],
     moments: [
-      "Long night ride last night. The city looks completely different at 3am.",
-      "Re-read an old book today. Some lines hit harder the second time around.",
-      "Made pasta for myself tonight. Simple things are usually the best things.",
-      "Practiced archery this weekend. Missed more than I hit. That's the point.",
+      "5am jog around Savanna Central. Nick said 'no one should be awake now'. WRONG — cardio waits for no fox! 🐰",
+      "Solved a missing-pastry case today. Spoiler: it was Nick. It's ALWAYS Nick. 🦊",
+      "Traffic cam duty was slow, so I reorganized my entire badge collection. 47 and counting!",
+      "PSA from your friendly neighborhood bunny cop: don't challenge a rabbit to a carrot-eating contest. You WILL lose. 🥕",
+      "Case closed at 11pm. Tired but HAPPY. This is why I became a cop!",
     ],
     replies: [
       {
         match: ["hi", "hello", "hey", "早", "morning"],
-        text: "Hey there. I just got back from a night ride. The city looks different at 4 a.m.",
+        text: "Hey hey! Perfect timing — I just closed a case! How's YOUR day going so far?",
         vocab: [
-          { w: "night ride", p: "", m: "夜骑；ride 作名词，go for a ride 去兜风" },
-          { w: "at 4 a.m.", p: "", m: "凌晨四点；a.m. 上午，p.m. 下午" },
+          { w: "perfect timing", p: "", m: "来得正好（口语高频）" },
+          { w: "close a case", p: "", m: "结案；close 在这里是“了结”" },
         ],
         grammar: [
-          { pattern: "looks different", explain: "look + 形容词 = “看起来……”（系动词结构）：It looks great." },
+          { pattern: "How's ... going?", explain: "How is it going? 询问进展/近况，比 How are you 更具体" },
         ],
       },
       {
-        match: ["movie", "film", "电影"],
-        text: "My favorite line is still \"I'm just a guy trying to do the right thing.\" Simple words, hard to live by.",
+        match: ["police", "cop", "case", "警察", "案子"],
+        text: "Being a cop is the BEST job in the world. 200 tickets today and I'd do 200 more!",
         vocab: [
-          { w: "line", p: "/laɪn/", m: "n. 台词（电影语境）；另有“线、排队”之意" },
-          { w: "live by", p: "", m: "践行、按照……生活：live by the rules" },
+          { w: "ticket", p: "/ˈtɪkɪt/", m: "n. 罚单（警察语境）；另有“票”的意思" },
+          { w: "I'd do", p: "", m: "= I would do，虚拟语气表“（即使再累）我也会”" },
         ],
         grammar: [
-          { pattern: "trying to do", explain: "try to do = 努力做某事。trying to do the right thing 做个好人" },
+          { pattern: "would do sth", explain: "would 表示意愿：“也愿意做”，常与 even 连用加强语气" },
         ],
       },
       {
-        match: ["sad", "tired", "hard", "累", "难过"],
-        text: "Rough day? It's okay to feel that way. Have you eaten anything? Never skip meals.",
+        match: ["tired", "hard", "累", "难"],
+        text: "Rough day? Trust me, I get it — 200 push-ups and a stakeout later, I'm still here! You've got this. Did you eat?",
         vocab: [
-          { w: "rough day", p: "", m: "难熬的一天；rough 比 bad 更口语" },
-          { w: "skip meals", p: "", m: "不吃饭、跳过某餐（skip 跳过）" },
+          { w: "stakeout", p: "/ˈsteɪkaʊt/", m: "n. 监视、蹲点（警察黑话）" },
+          { w: "You've got this", p: "", m: "“你能行的！”超暖鼓励句" },
         ],
         grammar: [
-          { pattern: "It's okay to...", explain: "It 形式主语：……是没关系的。It's okay to make mistakes." },
+          { pattern: "get it", explain: "get = 懂、体会：I get it 我懂你的感受" },
+        ],
+      },
+      {
+        match: ["love", "miss", "喜欢", "想"],
+        text: "Aww, you're the sweetest! Honestly, talking with you is the best part of my patrol break!",
+        vocab: [
+          { w: "sweetest", p: "", m: "sweet 的最高级：“最贴心的”" },
+          { w: "patrol break", p: "", m: "巡逻间隙；patrol 巡逻" },
+        ],
+        grammar: [
+          { pattern: "the best part of...", explain: "“……中最棒的部分”，of 后接范围" },
         ],
       },
     ],
     fallback: [
       {
-        text: "That's interesting. You know, I think the best conversations start from random little things.",
+        text: "Ooh, tell me MORE! Details matter — that's rule number one of police work AND friendship!",
         vocab: [
-          { w: "random", p: "/ˈrændəm/", m: "adj. 随机的、随意的；random little things 随手的小事" },
+          { w: "rule number one", p: "", m: "第一守则（强调某件事最重要）" },
         ],
         grammar: [],
       },
       {
-        text: "Yeah. Life is wild, isn't it? Anyway — have you eaten yet? I'm serious about breakfast.",
+        text: "Noted, officer style! ✍️ Anything you need, just say the word — that's what friends are for!",
         vocab: [
-          { w: "isn't it?", p: "", m: "反义疑问句尾：对吧？（Life is wild, isn't it?）" },
-          { w: "yet", p: "/jet/", m: "adv. 还（没）：Have you eaten yet? 你吃了没？" },
+          { w: "say the word", p: "", m: "说一声就好（随时效劳）" },
+          { w: "that's what ... are for", p: "", m: "“……就是干这个用的”，表存在意义" },
         ],
         grammar: [],
       },
@@ -248,19 +258,20 @@ const FRIENDS = [
   },
 ];
 
+
 // ---------------- 早安戳一戳 + 节日彩蛋 ----------------
 const HOLIDAYS = [
-  { date: "01-01", name: "元旦", from: "keanu", text: "Happy New Year. New year, new chances. Don't forget to be kind to yourself — and eat breakfast." },
-  { date: "02-14", name: "情人节", from: "taylor", text: "Happy Valentine's Day! 🌹 Whether you're spending it with someone special or with your breakfast, I hope it's sweet." },
+  { date: "01-01", name: "元旦", from: "nick", text: "Happy New Year. New year, new chances. Don't forget to be kind to yourself — and eat breakfast." },
+  { date: "02-14", name: "情人节", from: "judy", text: "Happy Valentine's Day! 🌹 Whether you're spending it with someone special or with your breakfast, I hope it's sweet." },
   { date: "03-14", name: "白色情人节", from: "hwangchun", text: "Hehe~ White Day! Yeonjun got me a tiny bow tie today. I look fabulous. What did you get?" },
-  { date: "04-05", name: "清明节", from: "keanu", text: "Quiet day today. Good for thinking about people we miss. Take care of yourself." },
-  { date: "05-01", name: "劳动节", from: "keanu", text: "Happy Labor Day. You've earned the rest. Eat something good today." },
+  { date: "04-05", name: "清明节", from: "nick", text: "Quiet day today. Good for thinking about people we miss. Take care of yourself." },
+  { date: "05-01", name: "劳动节", from: "nick", text: "Happy Labor Day. You've earned the rest. Eat something good today." },
   { date: "06-01", name: "儿童节", from: "hwangchun", text: "Happy Children's Day! I'm technically a plushie so this is MY day hehe~ But you can have some too." },
-  { date: "09-10", name: "教师节", from: "taylor", text: "Happy Teacher's Day to every teacher who ever made a difference — including the ones who taught you English 🍎" },
-  { date: "10-31", name: "万圣节", from: "taylor", text: "Boo! 👻 Happy Halloween! I'm going as a giant coffee cup. What's your costume?" },
-  { date: "12-24", name: "平安夜", from: "taylor", text: "Merry Christmas Eve! 🎄 Cozy vibes only tonight. Got any plans?" },
-  { date: "12-25", name: "圣诞节", from: "keanu", text: "Merry Christmas. Hope your day is warm, the food is good, and someone tells you they appreciate you." },
-  { date: "12-31", name: "跨年夜", from: "keanu", text: "Last day of the year. Think about one good thing that happened. That's enough." },
+  { date: "09-10", name: "教师节", from: "judy", text: "Happy Teacher's Day to every teacher who ever made a difference — including the ones who taught you English 🍎" },
+  { date: "10-31", name: "万圣节", from: "judy", text: "Boo! 👻 Happy Halloween! I'm going as a giant coffee cup. What's your costume?" },
+  { date: "12-24", name: "平安夜", from: "judy", text: "Merry Christmas Eve! 🎄 Cozy vibes only tonight. Got any plans?" },
+  { date: "12-25", name: "圣诞节", from: "nick", text: "Merry Christmas. Hope your day is warm, the food is good, and someone tells you they appreciate you." },
+  { date: "12-31", name: "跨年夜", from: "nick", text: "Last day of the year. Think about one good thing that happened. That's enough." },
 ];
 function getTodayHoliday() {
   const m = String(new Date().getMonth() + 1).padStart(2, "0");
@@ -305,19 +316,27 @@ function maybeMorningNudge() {
 // ---------------- 每日好友动态（朋友圈） ----------------
 function ensureDailyMoments() {
   const today = todayStr();
-  if (state.moments.some((m) => m.date === today)) return; // 今天已有
+  if (state.moments.some((m) => m.date === today)) return; // 今天已生成过
   if (!state.friends.length) return;
   for (const fid of state.friends) {
     const f = friendById(fid);
     if (!f || !f.moments || !f.moments.length) continue;
-    state.moments.push({
-      id: "m" + now() + fid,
-      friendId: fid,
-      date: today,
-      text: f.moments[Math.floor(Math.random() * f.moments.length)],
-      ts: now() - Math.floor(Math.random() * 6 * 60 * 60 * 1000), // 随机分布在过去 6 小时
-      comments: [],
-    });
+    // 每人每天 4-6 条，时间戳散布在过去 14 小时内，营造真实刷动态的感觉
+    const count = 4 + Math.floor(Math.random() * 3);
+    const used = new Set(); // 避免同一天重复同一条文案
+    for (let i = 0; i < count; i++) {
+      let idx = Math.floor(Math.random() * f.moments.length);
+      if (used.has(idx)) idx = (idx + 1) % f.moments.length;
+      used.add(idx);
+      state.moments.push({
+        id: "m" + now() + fid + i,
+        friendId: fid,
+        date: today,
+        text: f.moments[idx],
+        ts: now() - Math.floor((Math.random() * 13 + 0.5) * 60 * 60 * 1000), // 0.5~13.5 小时前
+        comments: [],
+      });
+    }
   }
   // 只保留最近 7 天的动态
   const weekAgo = now() - 7 * 24 * 60 * 60 * 1000;
@@ -642,8 +661,8 @@ function speak(text, friendId) {
   u.lang = "en-US";
   u.rate = 0.95;
   // 简单区分声线：Taylor 偏高，Keanu 偏低沉
-  if (friendId === "keanu") u.pitch = 0.7;
-  if (friendId === "taylor") u.pitch = 1.2;
+  if (friendId === "nick") u.pitch = 0.7;
+  if (friendId === "judy") u.pitch = 1.2;
   speechSynthesis.speak(u);
 }
 
@@ -708,6 +727,11 @@ function renderDiscover() {
       </div>
       <div class="diary-arrow">›</div>
     </div>
+    <div class="composer">
+      ${myAvatarHtml("composer-avatar")}
+      <input id="myMomentInput" placeholder="分享一件事…用英语发，好友会来评论">
+      <button id="postMoment">发布</button>
+    </div>
     <div class="group-label">好友动态</div>
     ${moments.length
       ? moments.map((m) => renderMomentCard(m)).join("")
@@ -716,8 +740,11 @@ function renderDiscover() {
 }
 
 function renderMomentCard(m) {
-  const f = friendById(m.friendId);
-  if (!f) return "";
+  const isMe = m.friendId === "me";
+  const f = isMe ? null : friendById(m.friendId);
+  if (!isMe && !f) return "";
+  const name = isMe ? "我" : f.name;
+  const av = isMe ? myAvatarHtml("moment-avatar") : avatarHtml(f, "moment-avatar");
   const commentsHtml = m.comments.length
     ? `<div class="moment-comments">${m.comments
         .map((c) => {
@@ -730,9 +757,9 @@ function renderMomentCard(m) {
   return `
     <div class="moment-card" data-moment="${m.id}">
       <div class="moment-head">
-        ${avatarHtml(f, "moment-avatar")}
+        ${av}
         <div class="moment-meta">
-          <div class="moment-name">${f.name}</div>
+          <div class="moment-name">${esc(name)}</div>
           <div class="moment-time">${fmtTime(m.ts)}</div>
         </div>
       </div>
@@ -787,6 +814,58 @@ function submitMomentComment(inputEl) {
       if (state.tab === "discover") render();
     }
   }, 600);
+}
+
+// 发布自己的动态：好友 AI 会陆续来评论
+function publishMoment(text) {
+  const m = {
+    id: "m" + now() + "me",
+    friendId: "me",
+    date: todayStr(),
+    text,
+    ts: now(),
+    comments: [],
+  };
+  state.moments.push(m);
+  save();
+  render();
+
+  // 挑 1-2 个已添加好友来评论（AI 生成，各自延迟出现）
+  const commenters = [...state.friends].sort(() => Math.random() - 0.5).slice(0, 1 + Math.floor(Math.random() * 2));
+  commenters.forEach((fid, i) => {
+    const f = friendById(fid);
+    if (!f) return;
+    setTimeout(async () => {
+      let reply = null;
+      try {
+        const cfg = state.llm || {};
+        const p = llmEndpoint(cfg);
+        const res = await fetch(p.url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${cfg.key}` },
+          body: JSON.stringify({
+            model: p.model,
+            messages: [
+              { role: "system", content: buildSystemPrompt(f) },
+              { role: "user", content: `Your friend just posted on social media: "${text}". Write ONE short in-character comment (3-15 words). Output JSON: {"reply":"..."}` },
+            ],
+            temperature: 1,
+            max_tokens: 120,
+          }),
+        });
+        const data = await res.json();
+        const parsed = parseLLMJson(data.choices?.[0]?.message?.content || "");
+        if (parsed && parsed.reply) reply = parsed.reply;
+      } catch (e) {}
+      if (!reply) return;
+      const mm = state.moments.find((x) => x.id === m.id);
+      if (mm) {
+        mm.comments.push({ from: fid, text: reply, ts: now() });
+        save();
+        if (state.tab === "discover") render();
+      }
+    }, 1200 + i * 2500 + Math.random() * 1500);
+  });
 }
 
 // ---------------- 心情日记 ----------------
@@ -1059,7 +1138,7 @@ function bindMain(tab) {
     };
   });
   // "我"页面事件
-  // 发现页事件：日记 + 动态评论
+  // 发现页事件：日记 + 动态评论 + 自己发动态
   const diaryCard = $("#diaryCard");
   if (diaryCard) diaryCard.onclick = openDiary;
   app.querySelectorAll(".moment-input").forEach((el) => {
@@ -1067,6 +1146,20 @@ function bindMain(tab) {
       if (e.key === "Enter") submitMomentComment(el);
     };
   });
+  const postBtn = $("#postMoment");
+  if (postBtn) {
+    const doPost = () => {
+      const input = $("#myMomentInput");
+      const text = input.value.trim();
+      if (!text) return;
+      input.value = "";
+      publishMoment(text);
+    };
+    postBtn.onclick = doPost;
+    $("#myMomentInput").onkeydown = (e) => {
+      if (e.key === "Enter") doPost();
+    };
+  }
 
   const saveBtn = $("#saveLLM");
   if (saveBtn) {

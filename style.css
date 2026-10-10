@@ -217,4 +217,19 @@ body {
   padding: 8px 2px; font-size: 13px; outline: none; margin-top: 8px; font-family: inherit;
 }
 .moment-input:focus { border-bottom-color: var(--green); }
+
+/* 发布动态输入框 */
+.composer {
+  display: flex; align-items: center; gap: 10px; margin: 12px; padding: 10px 12px;
+  background: #fff; border-radius: 12px; border: 1px solid var(--line);
+}
+.composer-avatar { width: 36px; height: 36px; font-size: 19px; border-radius: 50%; flex: none; }
+.composer input {
+  flex: 1; border: none; outline: none; font-size: 14px; min-width: 0; font-family: inherit;
+  background: transparent;
+}
+.composer button {
+  flex: none; border: none; background: var(--green); color: #fff; border-radius: 8px;
+  padding: 7px 14px; font-size: 13px; cursor: pointer;
+}
 .me-stats .stat span { font-size: 12px; color: var(--sub); }
