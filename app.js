@@ -435,6 +435,18 @@ function userName() {
   return (state.userName || "").trim() || "User";
 }
 
+// 共享《关于我》记忆块：注入到所有提示词
+function memBlock(fid) {
+  const mems = state.memories || { aboutUser: [], perChar: {} };
+  const lines = (mems.aboutUser || []).map((m) => `- ${m}`);
+  if (fid && (mems.perChar[fid] || []).length) {
+    (mems.perChar[fid] || []).forEach((m) => lines.push(`- (yours alone) ${m}`));
+  }
+  return lines.length
+    ? `WHAT YOU REMEMBER ABOUT THE USER (from past chats — use naturally when relevant, never dump as a list):\n${lines.join("\n")}`
+    : "";
+}
+
 // ---------------- 早安戳一戳 + 节日彩蛋 ----------------
 const HOLIDAYS = [
   { date: "01-01", name: "元旦", from: "nick", text: "Happy New Year. New year, new chances. Don't forget to be kind to yourself — and eat breakfast." },
@@ -547,6 +559,11 @@ let state = {
   relationships: {}, // friendId -> 自定义关系描述（覆盖预设，点头像可编辑）
   lastOpenDate: "", // 记录上次打开的日期（YYYY-MM-DD），用于触发早安戳一戳
   lastMorningDate: "",
+  memories: { aboutUser: [], perChar: {} }, // 共享《关于我》档案 + 每个角色的专属回忆
+  lastChatTime: {},   // fid -> 最后活跃时间戳（主动私聊用）
+  lastPingDate: {},   // fid -> 最后主动私聊日期
+  msgCount: {},       // fid -> 用户消息计数（每6条触发记忆总结）
+  birthday: "",       // 'MM-DD' 用户生日
 };
 let currentPanelMsg = null; // 学习面板当前展示的消息
 
@@ -566,6 +583,13 @@ function load() {
     state.activeFriend = null;
   }
   if (!state.chats || typeof state.chats !== "object") state.chats = {};
+  if (!state.memories || typeof state.memories !== "object") state.memories = { aboutUser: [], perChar: {} };
+  if (!Array.isArray(state.memories.aboutUser)) state.memories.aboutUser = [];
+  if (!state.memories.perChar || typeof state.memories.perChar !== "object") state.memories.perChar = {};
+  Object.keys(state.memories.perChar).forEach((k) => { if (!validIds.includes(k)) delete state.memories.perChar[k]; });
+  if (!state.lastChatTime || typeof state.lastChatTime !== "object") state.lastChatTime = {};
+  if (!state.lastPingDate || typeof state.lastPingDate !== "object") state.lastPingDate = {};
+  if (!state.msgCount || typeof state.msgCount !== "object") state.msgCount = {};
 }
 
 // ---------------- 数据操作 ----------------
@@ -598,6 +622,7 @@ function buildSystemPrompt(f) {
 CHARACTER: ${f.persona}
 RELATIONSHIP WITH USER: ${state.relationships[f.id] || f.relationship || "You and the user are good friends — warm, casual, teasing is fine."}
 The user's name is "${uname}" — address them by name naturally (not in every message).
+${memBlock()}
 
 LANGUAGE: Default to natural spoken English at CEFR B1 level. If the user explicitly asks to practice, switch to, or receive explanations in another language (Chinese, Japanese, Korean, etc.), follow that request freely in BOTH the reply language and the teaching language. Vocab/grammar explanations in the requested language.
 
@@ -1114,6 +1139,146 @@ function openCreateGroup() {
     }
   };
 }
+// ---------------- 记忆系统 ----------------
+// 每当用户在私聊发满 6 条消息，后台总结一次新事实进共享档案
+function noteUserActivity(fid) {
+  state.lastChatTime[fid] = now();
+  state.msgCount[fid] = (state.msgCount[fid] || 0) + 1;
+  if (state.msgCount[fid] % 6 === 0) {
+    summarizeMemories(fid);
+  }
+}
+
+async function summarizeMemories(fid) {
+  const f = friendById(fid);
+  if (!f) return;
+  const cfg = state.llm || {};
+  if (!cfg.key) return;
+  const p = llmEndpoint(cfg);
+  const recent = (state.chats[fid] || []).slice(-14).map((m) => `${m.from === "me" ? userName() : f.name}: ${m.text}`).join("\n");
+  const known = (state.memories.aboutUser || []).join(" | ") || "(none yet)";
+  try {
+    const res = await fetch(p.url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${cfg.key}` },
+      body: JSON.stringify({
+        model: p.model,
+        messages: [
+          { role: "system", content: "Extract NEW durable facts about the user from this chat (their life, preferences, schedule, feelings — e.g. 'works night shifts', 'has a cat named Mochi'). Skip small talk. Facts already known must NOT be repeated. Write each in short Chinese. Output ONLY JSON: {\"new\":[\"fact1\",\"fact2\"]} — empty array if nothing new." },
+          { role: "user", content: `Already known: ${known}\n\nRecent chat:\n${recent}` },
+        ],
+        temperature: 0.5,
+        max_tokens: 300,
+      }),
+    });
+    const data = await res.json();
+    let s = (data.choices?.[0]?.message?.content || "").trim().replace(/^```(?:json)?\s*/i, "").replace(/```\s*$/, "");
+    const st = s.indexOf("{"), en = s.lastIndexOf("}");
+    if (st === -1) return;
+    const obj = JSON.parse(s.slice(st, en + 1));
+    if (!Array.isArray(obj.new)) return;
+    const knownSet = new Set((state.memories.aboutUser || []).map((x) => x.trim()));
+    for (const fact of obj.new) {
+      if (typeof fact === "string" && fact.trim() && !knownSet.has(fact.trim())) {
+        state.memories.aboutUser.push(fact.trim());
+        knownSet.add(fact.trim());
+      }
+    }
+    // 档案上限 30 条，超出删最旧的
+    while (state.memories.aboutUser.length > 30) state.memories.aboutUser.shift();
+    save();
+  } catch (e) { /* 静默失败，不影响聊天 */ }
+}
+
+// ---------------- 主动私聊 ----------------
+// 打开 App 时检查：超 36 小时没聊的好友，40% 概率主动找你；生日当天全员祝寿
+async function maybeProactivePing() {
+  const today = todayStr();
+  // 生日祝福：优先级最高，每年一次
+  const birthdayToday = state.birthday && state.birthday === today.slice(5);
+  if (birthdayToday && !state.lastPingDate["__bd__" + today.slice(0, 4)]) {
+    state.lastPingDate["__bd__" + today.slice(0, 4)] = true;
+    save();
+    for (const fid of state.friends) {
+      const f = friendById(fid);
+      if (!f) continue;
+      setTimeout(() => {
+        state.chats[fid] = state.chats[fid] || [];
+        state.chats[fid].push({
+          from: "friend",
+          text: birthdayWish(f),
+          vocab: [], grammar: [],
+          ts: now(), read: false, morning: true,
+        });
+        save();
+        if (!state.activeGroup && state.tab === "chats") render();
+      }, 600 + state.friends.indexOf(fid) * 1200);
+    }
+    return; // 生日当天不再触发"失踪"戳
+  }
+  for (const fid of state.friends) {
+    if (state.lastPingDate[fid] === today) continue; // 这个好友今天已经主动过
+    const last = state.lastChatTime[fid] || 0;
+    if (now() - last < 36 * 60 * 60 * 1000) continue; // 还没到 36 小时
+    if (Math.random() > 0.4) { state.lastPingDate[fid] = today; continue; }
+    state.lastPingDate[fid] = today;
+    const f = friendById(fid);
+    if (!f) continue;
+    const days = Math.floor((now() - last) / 86400000);
+    // 后台生成一条结合记忆的主动消息
+    (async () => {
+      let text = null;
+      const cfg = state.llm || {};
+      const p = llmEndpoint(cfg);
+      const mems = (state.memories.aboutUser || []).slice(-6).join("; ") || "nothing specific";
+      try {
+        const res = await fetch(p.url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${cfg.key}` },
+          body: JSON.stringify({
+            model: p.model,
+            messages: [
+              { role: "system", content: buildSystemPrompt(f) },
+              { role: "user", content: `The user hasn't chatted with you for ${days} day(s). Send them ONE spontaneous message to reconnect — reference a memory about them, or something from your own life, and ask a question. 1-2 sentences. Output JSON: {"reply":"...","vocab":[],"grammar":[]}` },
+            ],
+            temperature: 1,
+            max_tokens: 200,
+          }),
+        });
+        const data = await res.json();
+        let s = (data.choices?.[0]?.message?.content || "").trim().replace(/^```(?:json)?\s*/i, "").replace(/```\s*$/, "");
+        const st = s.indexOf("{"), en = s.lastIndexOf("}");
+        if (st > -1) {
+          const obj = JSON.parse(s.slice(st, en + 1));
+          if (obj.reply) text = obj.reply;
+        }
+      } catch (e) {}
+      if (!text) return; // 失败就当他没找你，不造假消息
+      state.chats[fid] = state.chats[fid] || [];
+      state.chats[fid].push({
+        from: "friend", text,
+        vocab: [], grammar: [],
+        ts: now(), read: false, morning: true,
+      });
+      save();
+      if (!state.activeGroup && state.activeFriend !== fid) {
+        if (state.tab === "chats" || !state.activeFriend) render();
+      }
+    })();
+  }
+}
+
+function birthdayWish(f) {
+  const pool = {
+    nick: `Happy birthday, rookie. 🎂 I got you a pawpsicle. It's blueberry. You're welcome.`,
+    judy: `HAPPY BIRTHDAY!!! 🎉 I ran 5 extra miles today just to celebrate! Anyone can be anything — but today, you can be the birthday star!`,
+    hwangchun: `HAPPY BIRTHDAY!! 🐻🎂 Yeonjun let me pick your gift hehe~ It's a snack basket. But I already ate half. Sorry not sorry!`,
+    yeonjun: `Yo, happy birthday! 🎉 Tonight's cheat day — ramyeon on me. And yes, I'll let you win at... something.`,
+    sunwoo: `Yo!! Happy birthday!! 🎂 Basketball rematch later — birthday rules: you pick the court, I still win.`,
+  };
+  return pool[f.id] || `Happy birthday! 🎂 Wishing you the best day ever.`;
+}
+
 // ---------------- 群聊界面 ----------------
 function renderGroupChat() {
   const g = state.groups[state.activeGroup];
@@ -1159,11 +1324,15 @@ function resolveMember(g, name) {
   return g.memberIds.find((id) => (friendById(id)?.name || "").toLowerCase() === lower) || null;
 }
 
-async function callGroupLLM(g, userText) {
+async function callGroupLLM(g, userText, mentions) {
   const cfg = state.llm || {};
   if (!cfg.key) throw new Error("no-key");
   const p = llmEndpoint(cfg);
   const members = g.memberIds.map((id) => friendById(id)).filter(Boolean);
+  const mentionRule = mentions && mentions.length
+    ? `\n\nURGENT: The user @-mentioned these members: ${mentions.join(", ")}. Those members MUST reply FIRST and directly address the user's message. They cannot be ignored.`
+    : "";
+  const membersBlock = members.map((m) => `- ${m.name}: ${m.persona} (Relationship with the user: ${state.relationships[m.id] || m.relationship || "good friends"})`).join("\n");
   const transcript = g.chat
     .slice(-10)
     .map((m) => `${m.from === "me" ? "User" : friendById(m.from)?.name || "?"}: ${m.text}`)
@@ -1172,8 +1341,8 @@ async function callGroupLLM(g, userText) {
 
 Members:
 ${members.map((m) => `- ${m.name}: ${m.persona} (Relationship with the user: ${state.relationships[m.id] || m.relationship || "good friends"})`).join("\n")}
-
 The user is ALSO a member of this group (their name is "${userName()}"). They are a real person learning English — talking WITH them is the whole point.
+${memBlock()}
 
 Rules:
 1. MANDATORY: the user's newest message (last line of the transcript, labeled "User") MUST be responded to. At least one reply must directly address the user or answer their question. NEVER ignore the user or only talk among yourselves.
@@ -1183,7 +1352,7 @@ Rules:
 5. Each reply: 1-2 short sentences, natural spoken English, fully in character. Never repeat previous sentences.
 6. Include vocab/grammar teaching in at most 2 replies (arrays may be empty).
 7. Output ONLY a JSON object, no markdown fences:
-{"replies":[{"from":"MemberName","text":"...","vocab":[{"w":"word","p":"/phonetic/ or empty","m":"中文释义"}],"grammar":[{"pattern":"句型","explain":"中文讲解"}]}]}`;
+{"replies":[{"from":"MemberName","text":"...","vocab":[{"w":"word","p":"/phonetic/ or empty","m":"中文释义"}],"grammar":[{"pattern":"句型","explain":"中文讲解"}]}]}${mentionRule}`;
   const userLine = g.chat.length
     ? g.chat.slice(-10).map((m) => `${m.from === "me" ? userName() : friendById(m.from)?.name || "?"}: ${m.text}`).join("\n")
     : "(empty)";
@@ -1242,11 +1411,16 @@ function sendGroupMessage() {
   input.value = "";
   g.chat.push({ from: "me", text, ts: now(), read: true });
   save();
+  // 解析 @提及（@名字，不区分大小写）
+  const mentions = g.memberIds
+    .map((id) => friendById(id))
+    .filter((f) => f && text.toLowerCase().includes("@" + f.name.toLowerCase()))
+    .map((f) => f.name);
   render();
-  groupTypingAndReply(g, text);
+  groupTypingAndReply(g, text, mentions);
 }
 
-function groupTypingAndReply(g, userText) {
+function groupTypingAndReply(g, userText, mentions) {
   const msgsEl = $("#msgs");
   const typing = document.createElement("div");
   typing.className = "msg friend group-msg";
@@ -1254,7 +1428,7 @@ function groupTypingAndReply(g, userText) {
   msgsEl.appendChild(typing);
   msgsEl.scrollTop = msgsEl.scrollHeight;
 
-  callGroupLLM(g, userText)
+  callGroupLLM(g, userText, mentions)
     .then((replies) => {
       typing.remove();
       replies.forEach((r, i) => {
@@ -1271,11 +1445,58 @@ function groupTypingAndReply(g, userText) {
           if (state.activeGroup === gid) render();
         }, 800 + i * 1800 + Math.random() * 700);
       });
+      // 彩蛋：15% 概率随机群事件
+      if (Math.random() < 0.15 && g.memberIds.length >= 2) {
+        setTimeout(() => triggerGroupEvent(g), replies.length * 1800 + 2500);
+      }
     })
     .catch((e) => {
       typing.remove();
       showSystemNote("❌ 群聊 AI 失败：" + e.message, e.message);
     });
+}
+
+// ---------------- 群事件 ----------------
+const GROUP_EVENTS = [
+  { type: "vote", desc: "Start a quick poll about food/snacks (e.g. hotpot vs BBQ) and demand everyone votes." },
+  { type: "contest", desc: "Challenge the group to a mini contest (e.g. 'first to name 5 breakfast foods in English wins')." },
+  { type: "gossip", desc: "Share a piece of funny gossip or a hot take, then ask the user for their opinion directly." },
+  { type: "callout", desc: "Playfully call out the user (tease them about being quiet / their last message) and dare them to respond." },
+];
+async function triggerGroupEvent(g) {
+  if (!state.groups[g.id] || state.activeGroup !== g.id) return;
+  const cfg = state.llm || {};
+  if (!cfg.key) return;
+  const p = llmEndpoint(cfg);
+  const initiator = friendById(g.memberIds[Math.floor(Math.random() * g.memberIds.length)]);
+  if (!initiator) return;
+  const ev = GROUP_EVENTS[Math.floor(Math.random() * GROUP_EVENTS.length)];
+  try {
+    const res = await fetch(p.url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${cfg.key}` },
+      body: JSON.stringify({
+        model: p.model,
+        messages: [
+          { role: "system", content: buildSystemPrompt(initiator) },
+          { role: "user", content: `Spice up the group chat with a spontaneous event. Event type: ${ev.desc} Keep it 1-2 sentences, in character, and end with something the user must answer or do. Output JSON: {"reply":"..."}` },
+        ],
+        temperature: 1,
+        max_tokens: 200,
+      }),
+    });
+    const data = await res.json();
+    let s = (data.choices?.[0]?.message?.content || "").trim().replace(/^```(?:json)?\s*/i, "").replace(/```\s*$/, "");
+    const st = s.indexOf("{"), en = s.lastIndexOf("}");
+    if (st === -1) return;
+    const obj = JSON.parse(s.slice(st, en + 1));
+    if (!obj.reply) return;
+    const gg = state.groups[g.id];
+    if (!gg) return;
+    gg.chat.push({ from: initiator.id, text: "🎲 " + obj.reply, vocab: [], grammar: [], ts: now(), read: state.activeGroup === g.id, viaAI: true, event: true });
+    save();
+    if (state.activeGroup === g.id) render();
+  } catch (e) {}
 }
 
 function bindGroupChat() {
@@ -1296,6 +1517,20 @@ function bindGroupChat() {
   // 点气泡 → 学习面板（群聊版）
   app.querySelectorAll("[data-gmsg]").forEach((el) => {
     el.onclick = () => openGroupPanel(parseInt(el.dataset.gmsg, 10));
+  });
+  // 点成员头像 → 快速 @TA
+  app.querySelectorAll(".msg.friend.group-msg .avatar").forEach((el) => {
+    const msgEl = el.closest(".msg");
+    const idx = parseInt(msgEl.querySelector("[data-gmsg]")?.dataset.gmsg, 10);
+    el.onclick = (e) => {
+      e.stopPropagation();
+      const m = g.chat[idx];
+      const f = m && friendById(m.from);
+      if (!f) return;
+      const input = $("#input");
+      input.value = (input.value ? input.value + " " : "") + "@" + f.name + " ";
+      input.focus();
+    };
   });
 }
 
@@ -1430,8 +1665,26 @@ function renderMe() {
             <span class="me-label">昵称</span>
             <input id="userNameInput" class="me-input" type="text" placeholder="AI 会这样叫你" value="${esc(state.userName || "")}" maxlength="20">
           </div>
-          <button class="as-btn primary" id="saveName" style="width:100%">保存昵称</button>
+          <div class="me-row">
+            <span class="me-label">生日</span>
+            <input id="birthdayInput" class="me-input" type="text" placeholder="MM-DD，如 09-23（可选）" value="${esc(state.birthday || "")}" maxlength="5">
+          </div>
+          <button class="as-btn primary" id="saveName" style="width:100%">保存</button>
         </div>
+      </div>
+    </div>
+    <div class="me-card">
+      <div class="me-card-title">🧠 AI 记忆 <span style="font-weight:400;font-size:11px;color:var(--sub)">全员共享 · 每聊6条自动总结</span></div>
+      <div class="mem-list">
+        ${(state.memories.aboutUser || []).length
+          ? state.memories.aboutUser
+              .map((m, i) => `<div class="mem-item"><span>${esc(m)}</span><span class="mem-del" data-mem-del="${i}">✕</span></div>`)
+              .join("")
+          : `<div class="as-tip">还没有记录——多聊聊，AI 会自动记住关于你的事</div>`}
+      </div>
+      <div class="me-row" style="margin-top:8px">
+        <input id="memAddInput" class="me-input" placeholder="手动补充一条，如：我对花生过敏">
+        <button class="as-btn" id="memAddBtn" style="flex:none">添加</button>
       </div>
     </div>
     <div class="me-card">
@@ -1677,10 +1930,33 @@ function bindMain(tab) {
   if (saveNameBtn) {
     saveNameBtn.onclick = () => {
       state.userName = $("#userNameInput").value.trim();
+      const bd = $("#birthdayInput").value.trim();
+      state.birthday = /^\d{2}-\d{2}$/.test(bd) ? bd : "";
       save();
-      saveNameBtn.textContent = state.userName ? "✓ 已保存，AI 会叫你 " + state.userName : "✓ 已保存";
-      setTimeout(() => { saveNameBtn.textContent = "保存昵称"; }, 1600);
+      saveNameBtn.textContent = "✓ 已保存";
+      setTimeout(() => { saveNameBtn.textContent = "保存"; }, 1600);
     };
+  }
+  // AI 记忆：删除 / 手动添加
+  app.querySelectorAll("[data-mem-del]").forEach((el) => {
+    el.onclick = () => {
+      state.memories.aboutUser.splice(parseInt(el.dataset.memDel, 10), 1);
+      save();
+      render();
+    };
+  });
+  const memAddBtn = $("#memAddBtn");
+  if (memAddBtn) {
+    const doAdd = () => {
+      const input = $("#memAddInput");
+      const v = input.value.trim();
+      if (!v) return;
+      state.memories.aboutUser.push(v);
+      save();
+      render();
+    };
+    memAddBtn.onclick = doAdd;
+    $("#memAddInput").onkeydown = (e) => { if (e.key === "Enter") doAdd(); };
   }
   const meAvatar = $("#meAvatar");
   if (meAvatar) meAvatar.onclick = () => openAvatarSettings("me");
@@ -1765,6 +2041,7 @@ function bindChat() {
     if (!text) return;
     input.value = "";
     pushMsg(f.id, { from: "me", text });
+    noteUserActivity(f.id);
     render();
     friendReply(f, text);
   };
@@ -1911,6 +2188,20 @@ function openAvatarSettings(targetId) {
       <div class="sec-title">💞 TA 和你的关系（决定 TA 对你的语气）</div>
       <textarea id="relInput" class="diary-textarea" placeholder="描述你们的关系，比如：他是我的损友，天天怼我但很护我">${esc(state.relationships[targetId] || f.relationship || "")}</textarea>
       <button class="as-btn" id="saveRel" style="width:100%;margin-top:8px">保存关系设定</button>
+    </div>
+    <div class="rel-edit">
+      <div class="sec-title">🗝️ 我们的专属回忆（只属于你们俩）</div>
+      <div class="mem-list">
+        ${(state.memories.perChar[targetId] || []).length
+          ? state.memories.perChar[targetId]
+              .map((m, i) => `<div class="mem-item"><span>${esc(m)}</span><span class="mem-del" data-pmem-del="${i}">✕</span></div>`)
+              .join("")
+          : `<div class="as-tip">还什么都没记住，聊天中你们的故事会出现在这里</div>`}
+      </div>
+      <div class="me-row" style="margin-top:8px">
+        <input id="pmemAddInput" class="me-input" placeholder="手动记一条，如：我们约好周末吃火锅">
+        <button class="as-btn" id="pmemAddBtn" style="flex:none">添加</button>
+      </div>
     </div>`}
     <input type="file" id="fileInput" accept="image/*" style="display:none">
   `;
@@ -1953,6 +2244,45 @@ function openAvatarSettings(targetId) {
       setTimeout(() => (relBtn.textContent = "保存关系设定"), 1600);
     };
   }
+  // 专属回忆：删除 / 添加（改完即时生效，不关闭面板）
+  panel.querySelectorAll("[data-pmem-del]").forEach((el) => {
+    el.onclick = () => {
+      const arr = state.memories.perChar[targetId] || [];
+      arr.splice(parseInt(el.dataset.pmemDel, 10), 1);
+      if (arr.length) state.memories.perChar[targetId] = arr;
+      else delete state.memories.perChar[targetId];
+      save();
+      el.closest(".mem-item").remove();
+      if (!arr.length) panel.querySelector(".mem-list").innerHTML = `<div class="as-tip">还什么都没记住，聊天中你们的故事会出现在这里</div>`;
+    };
+  });
+  const pmemBtn = panel.querySelector("#pmemAddBtn");
+  if (pmemBtn) {
+    pmemBtn.onclick = () => {
+      const input = panel.querySelector("#pmemAddInput");
+      const v = input.value.trim();
+      if (!v) return;
+      state.memories.perChar[targetId] = state.memories.perChar[targetId] || [];
+      state.memories.perChar[targetId].push(v);
+      save();
+      const listEl = panel.querySelector(".mem-list");
+      const tip = listEl.querySelector(".as-tip");
+      if (tip) tip.remove();
+      const item = document.createElement("div");
+      item.className = "mem-item";
+      item.innerHTML = `<span>${esc(v)}</span><span class="mem-del">✕</span>`;
+      listEl.appendChild(item);
+      input.value = "";
+      item.querySelector(".mem-del").onclick = () => {
+        const arr = state.memories.perChar[targetId] || [];
+        const idx = arr.indexOf(v);
+        if (idx > -1) arr.splice(idx, 1);
+        if (!arr.length) delete state.memories.perChar[targetId];
+        save();
+        item.remove();
+      };
+    };
+  }
 }
 
 // 把任意图片压成正方形 dataURL（中心裁剪 + 缩到 size×size，防止 localStorage 爆掉）
@@ -1974,4 +2304,5 @@ function squashSquare(dataUrl, size, cb) {
 load();
 maybeMorningNudge();   // 早安戳一戳（含节日彩蛋）
 ensureDailyMoments();  // 每日好友动态
+maybeProactivePing();  // 主动私聊（失踪戳 + 生日祝福）
 render();
