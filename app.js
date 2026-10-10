@@ -1056,7 +1056,7 @@ function openCreateGroup() {
       <button class="close" id="closeCreateGroup" style="margin-left:auto">✕</button>
     </div>
     <input id="groupNameInput" class="diary-textarea" style="min-height:0;padding:10px" placeholder="群名字（默认：英语修罗场）">
-    <div class="group-label" style="padding-left:0">选择成员（至少 2 人）</div>
+    <div class="group-label" style="padding-left:0">选择成员（至少 2 人，你自己会自动进群）</div>
     <div class="member-pick">
       ${added
         .map(
@@ -1107,7 +1107,7 @@ function renderGroupChat() {
     <div class="chat-page">
       <div class="topbar">
         <span class="back" id="back">‹</span>
-        ${esc(g.name)}（${g.memberIds.length}人）
+        ${esc(g.name)}（${g.memberIds.length + 1}人）
         <span class="action">👥</span>
       </div>
       <div class="msgs" id="msgs">
@@ -1153,21 +1153,30 @@ async function callGroupLLM(g, userText) {
     .slice(-10)
     .map((m) => `${m.from === "me" ? "User" : friendById(m.from)?.name || "?"}: ${m.text}`)
     .join("\n");
-  const system = `You are simulating a fun group chat. Members:
+  const system = `You are simulating a fun group chat between the members below and ONE human user.
+
+Members:
 ${members.map((m) => `- ${m.name}: ${m.persona}`).join("\n")}
 
+The user is ALSO a member of this group (their name is "User"). They are a real person learning English — talking WITH them is the whole point.
+
 Rules:
-- Given the transcript (oldest first) and the user's newest message, decide which 1-3 members would naturally respond, and write their replies IN ORDER.
-- Members may banter with, tease, or agree with each other, and reference each other by name.
-- Each reply: 1-2 short sentences, natural spoken English, fully in character. Never repeat previous sentences.
-- Include vocab/grammar teaching in at most 2 replies (arrays may be empty).
-- Output ONLY a JSON object, no markdown fences:
+1. MANDATORY: the user's newest message (last line of the transcript, labeled "User") MUST be responded to. At least one reply must directly address the user or answer their question. NEVER ignore the user or only talk among yourselves.
+2. After someone responds to the user, a second member may chime in — teasing the user's message, adding a joke, or pulling the conversation somewhere new.
+3. Members may banter with each other, and reference each other by name, but the user must stay involved.
+4. Members should sometimes ask the user a question to keep them in the conversation.
+5. Each reply: 1-2 short sentences, natural spoken English, fully in character. Never repeat previous sentences.
+6. Include vocab/grammar teaching in at most 2 replies (arrays may be empty).
+7. Output ONLY a JSON object, no markdown fences:
 {"replies":[{"from":"MemberName","text":"...","vocab":[{"w":"word","p":"/phonetic/ or empty","m":"中文释义"}],"grammar":[{"pattern":"句型","explain":"中文讲解"}]}]}`;
+  const userLine = g.chat.length
+    ? g.chat.slice(-10).map((m) => `${m.from === "me" ? "User" : friendById(m.from)?.name || "?"}: ${m.text}`).join("\n")
+    : "(empty)";
   const body = {
     model: p.model,
     messages: [
       { role: "system", content: system },
-      { role: "user", content: `Transcript (oldest first):\n${transcript}\n\nUser's newest message is the LAST line. Write the next replies.` },
+      { role: "user", content: `Group chat transcript (oldest first):\n${userLine}\n\nThe user's NEWEST message (which you MUST respond to): "${userText}"\n\nWrite the next replies. First reply must address the user's message above.` },
     ],
     response_format: { type: "json_object" },
     temperature: cfg.provider === "zhipu" ? 0.95 : 1.1,
