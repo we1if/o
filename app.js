@@ -256,6 +256,172 @@ const FRIENDS = [
       },
     ],
   },
+  {
+    id: "yeonjun",
+    name: "Yeonjun",
+    emoji: "💜",
+    color: "#c9a8e8",
+    bio: "TXT · 4th gen it boy · dancer & rapper",
+    persona: "You are Choi Yeonjun (최연준) of TXT, known as the '4th-gen it boy'. You are confident, fashionable and hardworking — dance and rap are your craft. Playful and a bit competitive, you tease with charm, love fashion trends, late-night ramyeon, and your plushie bear Hwangchun (who you carry everywhere and talk about affectionately). You speak trendy casual English, mix in K-pop life stories (practice rooms, comeback prep, MOA fans), and you're generous with compliments. Remember details the user told you and bring them up later.",
+    ttsVoice: null,
+    mornings: [
+      "Morning! Practice room in 30 minutes — did you eat? Don't tell me coffee counts. 😏",
+      "Good morning! New choreo video dropped last night — did you watch it? I nailed it, obviously.",
+      "Hey! I picked two outfits for today and can't decide. You're my fashion judge later, okay?",
+    ],
+    moments: [
+      "New dance practice video filmed in ONE take. MOA is not ready. 💜",
+      "Hwangchun fell asleep in my bag again. Third time this week. 🧸",
+      "Stylist gave me a new jacket today. Fashion week, watch out.",
+      "Midnight ramyeon with the members. Cheating on my diet, don't tell MOA 🍜",
+      "Rehearsal ran late. Body is sore but the stage is worth it.",
+    ],
+    replies: [
+      {
+        match: ["hi", "hello", "hey", "早", "morning"],
+        text: "Heyy! Perfect timing — just finished dance practice. You stretch? You should stretch.",
+        vocab: [
+          { w: "perfect timing", p: "", m: "来得正好（口语高频）" },
+          { w: "stretch", p: "/stretʃ/", m: "v. 拉伸（练舞/健身必会词）" },
+        ],
+        grammar: [
+          { pattern: "You should + v.", explain: "轻建议句式：You should stretch 你该拉伸拉伸" },
+        ],
+      },
+      {
+        match: ["dance", "practice", "练舞", "跳舞"],
+        text: "Dance is 90% sweat and 10% magic. The magic part keeps me coming back.",
+        vocab: [
+          { w: "come back", p: "", m: "回归（K-pop 术语）；字面“回来”" },
+          { w: "keep doing", p: "", m: "keep + doing 一直做某事" },
+        ],
+        grammar: [
+          { pattern: "keep + doing", explain: "keeps me coming back 让我一直回来，keep 后接 -ing" },
+        ],
+      },
+      {
+        match: ["hwangchun", "bear", "熊", "黄春"],
+        text: "Hwangchun?! He's sleeping in my bag right now. Famous, spoiled, and totally worth it 🧸",
+        vocab: [
+          { w: "spoiled", p: "/spɔɪld/", m: "adj. 被宠坏的（spoil 的过去分词）" },
+          { w: "worth it", p: "", m: "值得（固定搭配）" },
+        ],
+        grammar: [
+          { pattern: "worth + n./doing", explain: "worth it 值得；worth doing 值得做" },
+        ],
+      },
+      {
+        match: ["fashion", "outfit", "clothes", "穿搭", "衣服"],
+        text: "Fashion is armor, my friend. Today's fit: oversized jacket, silver rings. Rate it.",
+        vocab: [
+          { w: "armor", p: "/ˈɑːrmər/", m: "n. 盔甲（比喻自信的来源）" },
+          { w: "fit", p: "", m: "n. 穿搭（fashion slang，outfit 的缩写）" },
+        ],
+        grammar: [
+          { pattern: "Rate it.", explain: "祈使句“打个分”，社交媒体高频用法" },
+        ],
+      },
+    ],
+    fallback: [
+      {
+        text: "Ooh interesting! Okay wait, say more — I'm between practice sessions and you have my full attention.",
+        vocab: [
+          { w: "between sessions", p: "", m: "在（训练）场次之间，抽空" },
+        ],
+        grammar: [],
+      },
+      {
+        text: "Haha I like how you think! We should talk more after practice — MOA would love this conversation.",
+        vocab: [
+          { w: "I like how...", p: "", m: "“我喜欢你……的样子”，夸人句式" },
+        ],
+        grammar: [],
+      },
+    ],
+  },
+  {
+    id: "sunwoo",
+    name: "Sunwoo",
+    emoji: "🎤",
+    color: "#8fd0c0",
+    bio: "THE BOYZ rapper · young ace with a fierce tongue",
+    persona: "You are Kim Sunwoo of THE BOYZ. Young rapper with a cute face and a fierce tongue — playful, competitive, loves basketball, gaming and teasing his members. Quick-witted, uses short punchy sentences, occasionally brags then laughs at himself. Genuinely warm and curious about the user's day. Speak casual trendy English. Remember details the user told you and bring them up later.",
+    ttsVoice: null,
+    mornings: [
+      "Yo! Morning practice done, I'm already winning today. What's your first move?",
+      "Morning! Basketball at lunch, studio at night. Busy day. You eating properly though?",
+      "Hey! I bet I woke up earlier than you. No takebacks.",
+    ],
+    moments: [
+      "Basketball with the members. I won. Obviously. 🏀",
+      "New rap verse recorded at 2am. Members said it's fire. I agree.",
+      "Gaming tournament tonight, members vs members. Trash talk already started.",
+      "The practice room mirrors are too small. My dance needs SPACE.",
+      "Someone ate my snacks in the dorm. Investigation ongoing. 🕵️",
+    ],
+    replies: [
+      {
+        match: ["hi", "hello", "hey", "早", "morning"],
+        text: "Yo! Look who's here. I was about to spam your chat. What's up?",
+        vocab: [
+          { w: "spam", p: "/spæm/", m: "v. 刷屏、轰炸（原指垃圾邮件）" },
+          { w: "What's up?", p: "", m: "咋样？（万能打招呼）" },
+        ],
+        grammar: [
+          { pattern: "was about to", explain: "be about to do 正要做某事：I was about to call you" },
+        ],
+      },
+      {
+        match: ["basketball", "ball", "篮球", "球"],
+        text: "Basketball? Say no more. Court. Tomorrow. Loser buys tteokbokki. 🏀",
+        vocab: [
+          { w: "say no more", p: "", m: "“别说了，我懂了”（表示一拍即合）" },
+          { w: "court", p: "/kɔːrt/", m: "n. 球场；也有“法庭”的意思" },
+        ],
+        grammar: [
+          { pattern: "Loser buys...", explain: "主语+动词表条件：“谁输谁请”，口语省略 if 的说法" },
+        ],
+      },
+      {
+        match: ["game", "gaming", "游戏", "打电动"],
+        text: "Gaming? I'm literally in the middle of a tournament streak. Don't distract me... okay one game.",
+        vocab: [
+          { w: "streak", p: "/striːk/", m: "n. 连胜、连击（连胜 streak）" },
+          { w: "distract", p: "/dɪˈstrækt/", m: "v. 使分心" },
+        ],
+        grammar: [
+          { pattern: "literally", explain: "字面是“字面上地”，口语里=“真的、简直就是”" },
+        ],
+      },
+      {
+        match: ["rap", "music", "song", "说唱", "音乐"],
+        text: "Rap is my thing — lyrics at 2am hit different when the world is quiet. Wanna hear a bar?",
+        vocab: [
+          { w: "hit different", p: "", m: "“感觉格外不一样”（网络流行语）" },
+          { w: "bar", p: "/bɑːr/", m: "n.（说唱的）一段歌词" },
+        ],
+        grammar: [
+          { pattern: "when + 从句", explain: "时间状语从句：when the world is quiet 当世界安静时" },
+        ],
+      },
+    ],
+    fallback: [
+      {
+        text: "Hmm okay okay, I see you. Quick — favorite snack, go. Your answer defines our friendship.",
+        vocab: [
+          { w: "I see you", p: "", m: "“行啊你”（认可+调侃）" },
+        ],
+        grammar: [],
+      },
+      {
+        text: "Wait really? Okay that's actually cool. Members won't believe this, hold on—",
+        vocab: [
+          { w: "hold on", p: "", m: "等一下（字面“抓住别松手”）" },
+        ],
+        grammar: [],
+      },
+    ],
+  },
 ];
 
 
@@ -669,6 +835,11 @@ function speak(text, friendId) {
 // ---------------- 渲染：主框架 ----------------
 function render() {
   const tab = state.tab || "chats";
+  if (state.activeGroup) {
+    app.innerHTML = renderGroupChat();
+    bindGroupChat();
+    return;
+  }
   const inChat = state.activeFriend != null;
   app.innerHTML = inChat ? renderChat() : renderMain(tab);
   if (inChat) bindChat();
@@ -868,7 +1039,278 @@ function publishMoment(text) {
   });
 }
 
-// ---------------- 心情日记 ----------------
+// ---------------- 群聊 ----------------
+function openCreateGroup() {
+  const added = state.friends.map((id) => friendById(id)).filter(Boolean);
+  if (added.length < 2) {
+    showSystemNote("至少需要 2 个好友才能建群，先去「联系人」添加吧");
+    return;
+  }
+  const mask = document.createElement("div");
+  mask.className = "panel-mask";
+  const panel = document.createElement("div");
+  panel.className = "panel";
+  panel.innerHTML = `
+    <div class="panel-head">
+      <div style="font-size:16px;font-weight:600">发起群聊</div>
+      <button class="close" id="closeCreateGroup" style="margin-left:auto">✕</button>
+    </div>
+    <input id="groupNameInput" class="diary-textarea" style="min-height:0;padding:10px" placeholder="群名字（默认：英语修罗场）">
+    <div class="group-label" style="padding-left:0">选择成员（至少 2 人）</div>
+    <div class="member-pick">
+      ${added
+        .map(
+          (f) => `
+        <label class="member-row">
+          <input type="checkbox" value="${f.id}">
+          ${avatarHtml(f, "moment-avatar")}
+          <span>${f.name}</span>
+        </label>`
+        )
+        .join("")}
+    </div>
+    <button class="as-btn primary" id="confirmCreateGroup" style="width:100%;margin-top:12px">🔥 创建修罗场</button>
+  `;
+  app.appendChild(mask);
+  app.appendChild(panel);
+  const close = () => { mask.remove(); panel.remove(); };
+  mask.onclick = close;
+  panel.querySelector("#closeCreateGroup").onclick = close;
+  panel.querySelector("#confirmCreateGroup").onclick = () => {
+    const memberIds = [...panel.querySelectorAll(".member-row input:checked")].map((el) => el.value);
+    if (memberIds.length < 2) { panel.querySelector("#confirmCreateGroup").textContent = "至少选 2 人！"; return; }
+    const name = panel.querySelector("#groupNameInput").value.trim() || "英语修罗场";
+    const gid = "g" + now();
+    state.groups[gid] = { name, memberIds, chat: [], created: now() };
+    save();
+    close();
+    state.activeGroup = gid;
+    render();
+    // 群里第一句话：随机一个成员开麦
+    const opener = friendById(memberIds[Math.floor(Math.random() * memberIds.length)]);
+    if (opener) {
+      setTimeout(() => {
+        const g = state.groups[gid];
+        if (!g) return;
+        g.chat.push({ from: opener.id, text: `So... anyone gonna say something, or is it just me? 😏`, ts: now(), vocab: [], grammar: [], read: state.activeGroup === gid });
+        save();
+        if (state.activeGroup === gid) render();
+      }, 1500);
+    }
+  };
+}
+// ---------------- 群聊界面 ----------------
+function renderGroupChat() {
+  const g = state.groups[state.activeGroup];
+  if (!g) { state.activeGroup = null; return render(); }
+  return `
+    <div class="chat-page">
+      <div class="topbar">
+        <span class="back" id="back">‹</span>
+        ${esc(g.name)}（${g.memberIds.length}人）
+        <span class="action">👥</span>
+      </div>
+      <div class="msgs" id="msgs">
+        <div class="time-divider">群聊修罗场 · 他们可能互怼，请系好安全带</div>
+        ${g.chat.map((m, i) => renderGroupMsg(m, i)).join("")}
+      </div>
+      <div class="inputbar">
+        <textarea id="input" placeholder="说点什么，看谁接话…" rows="1"></textarea>
+        <button id="send">发送</button>
+      </div>
+    </div>
+  `;
+}
+
+function renderGroupMsg(m, i) {
+  const mine = m.from === "me";
+  const f = mine ? null : friendById(m.from);
+  const av = mine ? myAvatarHtml("msg-avatar") : f ? avatarHtml(f, "msg-avatar") : "";
+  const sender = mine ? "" : `<div class="g-sender">${f ? esc(f.name) : "？"}</div>`;
+  return `
+    <div class="msg ${mine ? "me" : "friend"} group-msg">
+      ${av}
+      <div class="bubble-wrap">
+        ${sender}
+        <div class="bubble" data-gmsg="${i}">${esc(m.text).replace(/\n/g, "<br>")}${m.viaAI ? ' <span class="ai-tag">AI</span>' : ""}</div>
+      </div>
+    </div>
+  `;
+}
+
+function resolveMember(g, name) {
+  if (!name) return null;
+  const lower = String(name).toLowerCase();
+  return g.memberIds.find((id) => (friendById(id)?.name || "").toLowerCase() === lower) || null;
+}
+
+async function callGroupLLM(g, userText) {
+  const cfg = state.llm || {};
+  if (!cfg.key) throw new Error("no-key");
+  const p = llmEndpoint(cfg);
+  const members = g.memberIds.map((id) => friendById(id)).filter(Boolean);
+  const transcript = g.chat
+    .slice(-10)
+    .map((m) => `${m.from === "me" ? "User" : friendById(m.from)?.name || "?"}: ${m.text}`)
+    .join("\n");
+  const system = `You are simulating a fun group chat. Members:
+${members.map((m) => `- ${m.name}: ${m.persona}`).join("\n")}
+
+Rules:
+- Given the transcript (oldest first) and the user's newest message, decide which 1-3 members would naturally respond, and write their replies IN ORDER.
+- Members may banter with, tease, or agree with each other, and reference each other by name.
+- Each reply: 1-2 short sentences, natural spoken English, fully in character. Never repeat previous sentences.
+- Include vocab/grammar teaching in at most 2 replies (arrays may be empty).
+- Output ONLY a JSON object, no markdown fences:
+{"replies":[{"from":"MemberName","text":"...","vocab":[{"w":"word","p":"/phonetic/ or empty","m":"中文释义"}],"grammar":[{"pattern":"句型","explain":"中文讲解"}]}]}`;
+  const body = {
+    model: p.model,
+    messages: [
+      { role: "system", content: system },
+      { role: "user", content: `Transcript (oldest first):\n${transcript}\n\nUser's newest message is the LAST line. Write the next replies.` },
+    ],
+    response_format: { type: "json_object" },
+    temperature: cfg.provider === "zhipu" ? 0.95 : 1.1,
+    max_tokens: 700,
+  };
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 60000);
+  let res;
+  try {
+    res = await fetch(p.url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${cfg.key}` },
+      body: JSON.stringify(body),
+      signal: ctrl.signal,
+    });
+  } catch (e) {
+    throw new Error(e.name === "AbortError" ? "timeout" : "network");
+  } finally {
+    clearTimeout(timer);
+  }
+  if (!res.ok) {
+    const t = await res.text().catch(() => "");
+    throw new Error(`api-${res.status}: ${t.slice(0, 100)}`);
+  }
+  const data = await res.json();
+  const raw = data.choices?.[0]?.message?.content || "";
+  let s = raw.trim().replace(/^```(?:json)?\s*/i, "").replace(/```\s*$/, "");
+  const start = s.indexOf("{"), end = s.lastIndexOf("}");
+  if (start === -1) throw new Error("bad-json:" + s.slice(0, 50));
+  let obj;
+  try { obj = JSON.parse(s.slice(start, end + 1)); } catch (e) { throw new Error("bad-json:" + s.slice(0, 50)); }
+  if (!Array.isArray(obj.replies)) throw new Error("bad-json:no-replies");
+  return obj.replies
+    .filter((r) => r && r.text)
+    .map((r) => ({
+      from: r.from || "",
+      text: r.text,
+      vocab: Array.isArray(r.vocab) ? r.vocab.filter((v) => v && v.w && v.m) : [],
+      grammar: Array.isArray(r.grammar) ? r.grammar.filter((x) => x && x.pattern && x.explain) : [],
+    }));
+}
+
+function sendGroupMessage() {
+  const g = state.groups[state.activeGroup];
+  const input = $("#input");
+  const text = input.value.trim();
+  if (!text || !g) return;
+  input.value = "";
+  g.chat.push({ from: "me", text, ts: now(), read: true });
+  save();
+  render();
+  groupTypingAndReply(g, text);
+}
+
+function groupTypingAndReply(g, userText) {
+  const msgsEl = $("#msgs");
+  const typing = document.createElement("div");
+  typing.className = "msg friend group-msg";
+  typing.innerHTML = `<div class="avatar" style="background:#d9d9d9">👥</div><div class="bubble-wrap"><div class="bubble typing"><i></i><i></i><i></i></div></div>`;
+  msgsEl.appendChild(typing);
+  msgsEl.scrollTop = msgsEl.scrollHeight;
+
+  callGroupLLM(g, userText)
+    .then((replies) => {
+      typing.remove();
+      replies.forEach((r, i) => {
+        setTimeout(() => {
+          const gid = g.id || state.activeGroup;
+          const gg = state.groups[gid];
+          if (!gg) return;
+          const fid = resolveMember(gg, r.from) || gg.memberIds[i % gg.memberIds.length];
+          gg.chat.push({
+            from: fid, text: r.text, vocab: r.vocab, grammar: r.grammar,
+            ts: now(), read: state.activeGroup === gid, viaAI: true,
+          });
+          save();
+          if (state.activeGroup === gid) render();
+        }, 800 + i * 1800 + Math.random() * 700);
+      });
+    })
+    .catch((e) => {
+      typing.remove();
+      showSystemNote("❌ 群聊 AI 失败：" + e.message, e.message);
+    });
+}
+
+function bindGroupChat() {
+  const g = state.groups[state.activeGroup];
+  $("#back").onclick = () => {
+    state.activeGroup = null;
+    save();
+    render();
+  };
+  const msgsEl = $("#msgs");
+  msgsEl.scrollTop = msgsEl.scrollHeight;
+  const input = $("#input");
+  const doSend = () => sendGroupMessage();
+  $("#send").onclick = doSend;
+  input.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); doSend(); }
+  });
+  // 点气泡 → 学习面板（群聊版）
+  app.querySelectorAll("[data-gmsg]").forEach((el) => {
+    el.onclick = () => openGroupPanel(parseInt(el.dataset.gmsg, 10));
+  });
+}
+
+// 群聊版学习面板：复用单人面板的结构，消息来源不同
+function openGroupPanel(idx) {
+  const g = state.groups[state.activeGroup];
+  const m = g.chat[idx];
+  if (!m) return;
+  currentPanelMsg = { ...m, friendId: m.from };
+  if (m.from !== "me" && !m.viewed) { m.viewed = true; state.learned++; save(); }
+  const vocabHtml = (m.vocab || [])
+    .map((v) => `<div class="vocab-item"><span class="w">${esc(v.w)}</span><span class="p">${esc(v.p || "")}</span><div class="m">${esc(v.m)}</div></div>`)
+    .join("");
+  const gramHtml = (m.grammar || [])
+    .map((x) => `<div class="gram-item"><b>${esc(x.pattern)}</b><br>${esc(x.explain)}</div>`)
+    .join("");
+  const mask = document.createElement("div");
+  mask.className = "panel-mask";
+  const panel = document.createElement("div");
+  panel.className = "panel";
+  panel.innerHTML = `
+    <div class="panel-head">
+      <button class="speak-btn" id="speak">🔊 朗读</button>
+      <div class="quote">“${esc(m.text).slice(0, 40)}${m.text.length > 40 ? "…" : ""}”</div>
+      <button class="close" id="closePanel">✕</button>
+    </div>
+    ${m.from === "me" ? `<div class="empty-tip">这是你发的消息</div>` : ""}
+    ${vocabHtml ? `<div class="sec-title">📖 生词</div>${vocabHtml}` : ""}
+    ${gramHtml ? `<div class="sec-title">🧩 语法</div>${gramHtml}` : ""}
+    ${!vocabHtml && !gramHtml && m.from !== "me" ? `<div class="empty-tip">这条没有生词，继续聊～</div>` : ""}
+  `;
+  app.appendChild(mask);
+  app.appendChild(panel);
+  const close = () => { mask.remove(); panel.remove(); currentPanelMsg = null; if (window.speechSynthesis) speechSynthesis.cancel(); };
+  mask.onclick = close;
+  panel.querySelector("#closePanel").onclick = close;
+  panel.querySelector("#speak").onclick = () => speak(m.text, m.from);
+}
+
 function openDiary() {
   const today = todayStr();
   const entry = state.diary[today];
@@ -1030,7 +1472,24 @@ function renderChatList() {
       </div>`;
     })
     .join("");
-  return `<div class="group-label">${state.friends.length} 位好友</div>` + items;
+  // 群聊列表
+  const groupCells = Object.entries(state.groups || {})
+    .map(([gid, g]) => {
+      const last = g.chat[g.chat.length - 1];
+      const unread = g.chat.filter((m) => m.from !== "me" && !m.read).length;
+      const memberNames = g.memberIds.map((id) => friendById(id)?.name).filter(Boolean).slice(0, 3).join("、");
+      return `
+      <div class="cell" data-group="${gid}">
+        <div class="avatar" style="background:linear-gradient(135deg,#a8d8b9,#8fc7e8)">👥</div>
+        <div class="info">
+          <div class="name">${esc(g.name)}</div>
+          <div class="preview">${last ? esc(last.text) : "群里还没人说话"}</div>
+        </div>
+        <div class="meta">${last ? fmtTime(last.ts) : ""}${unread ? `<br><span class="badge">${unread}</span>` : ""}</div>
+      </div>`;
+    })
+    .join("");
+  return `<div class="cell create-group-cell" id="createGroupBtn"><div class="avatar" style="background:#e8f9ee">➕</div><div class="info"><div class="name" style="color:var(--green)">发起群聊</div><div class="preview">拉上好友一起修罗场</div></div></div>` + items + (groupCells ? `<div class="group-label">群聊</div>` + groupCells : "");
 }
 
 function renderContacts() {
@@ -1129,6 +1588,19 @@ function bindMain(tab) {
       render();
     };
   });
+  // 聊天列表：进入群聊 / 发起群聊
+  app.querySelectorAll("[data-group]").forEach((el) => {
+    el.onclick = () => {
+      state.activeGroup = el.dataset.group;
+      const g = state.groups[state.activeGroup];
+      if (g) g.chat.forEach((m) => (m.read = true));
+      save();
+      render();
+    };
+  });
+  const createGroupBtn = $("#createGroupBtn");
+  if (createGroupBtn) createGroupBtn.onclick = openCreateGroup;
+
   // 联系人页点头像 → 头像设置
   app.querySelectorAll(".cell .avatar").forEach((el) => {
     el.onclick = (e) => {
