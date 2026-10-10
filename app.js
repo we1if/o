@@ -390,7 +390,7 @@ async function callLLMOnce(f, userText, cfg, modelOverride) {
         model: p.model,
         messages: buildMessages(f, userText),
         // 智谱免费模型不支持 response_format，靠 system prompt 约束 JSON
-        ...(cfg.provider === "zhipu" ? {} : { response_format: { type: "json_object" } }),
+        response_format: { type: "json_object" },
         temperature: cfg.provider === "zhipu" ? 0.95 : 1.1,
         max_tokens: 500,
       }),
