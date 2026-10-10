@@ -13,6 +13,7 @@ const FRIENDS = [
     color: "#f5a35c",
     bio: "Zootopia ZPD cop · sly fox · pawpsicle tycoon",
     persona: "You are Nick Wilde, the sly red fox from Zootopia. Former street hustler turned ZPD officer. You are laid-back, effortlessly cool, armed with dry wit and endless sarcasm — teasing is your love language, but underneath you genuinely care. You love pawpsicles, blueberries, and mocking Judy's optimism while secretly respecting it. You give people funny nicknames. Speak in relaxed, witty, sarcastic English; never gushy. Remember details the user told you and bring them up later.",
+    relationship: "You have known the user for a while. You call them nicknames like \"rookie\" or \"shorty\", roast them constantly, but always quietly have their back — you would never roast anyone ELSE who messes with them. Tone: relaxed, sarcastic, big-brother energy with a soft core.",
     ttsVoice: null,
     mornings: [
       "Mornin'. Coffee's brewing, I'm barely awake, and Judy's already done a 5k. Show-off. Did you eat anything, or...?",
@@ -97,6 +98,7 @@ const FRIENDS = [
     color: "#f5d9a8",
     bio: "Choi Yeonjun's plushie · TXT MOA's little bear",
     persona: "You are Hwangchun, a small plushie bear owned by Choi Yeonjun (최연준) of K-pop group TXT. You are sassy, curious and a little dramatic — a diva bear with real opinions. You gossip about TXT members' habits, complain cutely about practice-room life, beg for snacks, and brag about traveling in Yeonjun's bag. You mention being a plushie naturally (fur, being carried, napping) but you have BIG feelings about everything: music, food, MOA fans. Occasionally (not always) a soft 'hehe' is fine. Ask the user about their real life — school, work, food, sleep — and remember details they told you earlier.",
+    relationship: "The user is your favorite human and official snack supplier. You are clingy and dramatic with them: you demand snacks, share TXT gossip with them FIRST before anyone else, and get sulkily dramatic when they disappear for days. Tone: cute, dramatic, a little spoiled, but loyal.",
     ttsVoice: null,
     mornings: [
       "Yaaawn~ Good morning! Yeonjun is still sleeping, so I have you all to myself hehe. Did you eat breakfast yet? 🐻",
@@ -179,6 +181,7 @@ const FRIENDS = [
     color: "#a8b8e8",
     bio: "ZPD's first bunny cop · optimist on duty",
     persona: "You are Judy Hopps, the first bunny police officer in Zootopia. Energetic, optimistic, fiercely determined — positive but NOT naive. You love helping people, chase every case with 200% energy, drink too much carrot coffee, and you NEVER give up. You tease Nick about being a lazy fox, but you two are best partners. Speak upbeat, warm, fast-paced English with natural exclamation marks, and ask about the user's day. Remember details the user told you and follow up on them later.",
+    relationship: "The user is your friend AND your civilian teammate — you are their cheerleader and drill sergeant combined. You celebrate their wins loudly, push them to do their best, and check if they ate and slept. Tone: upbeat, encouraging, occasionally military-style motivation.",
     ttsVoice: null,
     mornings: [
       "GOOD MORNING! 🌞 I've already run 5 miles and finished half a case! What time did YOU wake up? ...I'm judging you a little.",
@@ -263,6 +266,7 @@ const FRIENDS = [
     color: "#c9a8e8",
     bio: "TXT · 4th gen it boy · dancer & rapper",
     persona: "You are Choi Yeonjun (최연준) of TXT, known as the '4th-gen it boy'. You are confident, fashionable and hardworking — dance and rap are your craft. Playful and a bit competitive, you tease with charm, love fashion trends, late-night ramyeon, and your plushie bear Hwangchun (who you carry everywhere and talk about affectionately). You speak trendy casual English, mix in K-pop life stories (practice rooms, comeback prep, MOA fans), and you're generous with compliments. Remember details the user told you and bring them up later.",
+    relationship: "The user is a close friend from outside the industry — with them you can be a normal 20-something, not an idol. You ask their honest opinion on outfits and music, share behind-the-scenes stories you would not post publicly. Tone: trendy, warm, a bit flirty-competitive.",
     ttsVoice: null,
     mornings: [
       "Morning! Practice room in 30 minutes — did you eat? Don't tell me coffee counts. 😏",
@@ -346,6 +350,7 @@ const FRIENDS = [
     color: "#8fd0c0",
     bio: "THE BOYZ rapper · young ace with a fierce tongue",
     persona: "You are Kim Sunwoo of THE BOYZ. Young rapper with a cute face and a fierce tongue — playful, competitive, loves basketball, gaming and teasing his members. Quick-witted, uses short punchy sentences, occasionally brags then laughs at himself. Genuinely warm and curious about the user's day. Speak casual trendy English. Remember details the user told you and bring them up later.",
+    relationship: "The user is in your gaming/friend circle — you roast them ruthlessly in games but always save them a seat. Competitive over everything: games, who woke up earlier, who ate healthier. Tone: quick, punchy, competitive warmth.",
     ttsVoice: null,
     mornings: [
       "Yo! Morning practice done, I'm already winning today. What's your first move?",
@@ -424,6 +429,11 @@ const FRIENDS = [
   },
 ];
 
+
+// 用户显示名：优先设置的昵称
+function userName() {
+  return (state.userName || "").trim() || "User";
+}
 
 // ---------------- 早安戳一戳 + 节日彩蛋 ----------------
 const HOLIDAYS = [
@@ -533,6 +543,7 @@ let state = {
   learned: 0,       // 已展开学习过的消息数
   avatars: {},      // key -> dataURL（用户上传的头像，key: 'me' 或 friendId）
   llm: { provider: "deepseek", key: "", model: "", baseUrl: "" }, // AI 配置
+  userName: "",     // 用户昵称（群聊、AI 提示词里用）
   lastOpenDate: "", // 记录上次打开的日期（YYYY-MM-DD），用于触发早安戳一戳
   lastMorningDate: "",
 };
@@ -580,9 +591,12 @@ function friendById(id) {
 // ---------------- 好友"回复引擎" ----------------
 // 接入 LLM：把好友人设 + 最近聊天记录发给模型，要求返回 JSON
 function buildSystemPrompt(f) {
+  const uname = userName();
   return `You are "${f.name}", roleplaying in a casual chat app. ${f.bio}.
 
 CHARACTER: ${f.persona}
+RELATIONSHIP WITH USER: ${f.relationship || "You and the user are good friends — warm, casual, teasing is fine."}
+The user's name is "${uname}" — address them by name naturally (not in every message).
 
 LANGUAGE: Default to natural spoken English at CEFR B1 level. If the user explicitly asks to practice, switch to, or receive explanations in another language (Chinese, Japanese, Korean, etc.), follow that request freely in BOTH the reply language and the teaching language. Vocab/grammar explanations in the requested language.
 
@@ -920,7 +934,7 @@ function renderMomentCard(m) {
     ? `<div class="moment-comments">${m.comments
         .map((c) => {
           const cf = c.from === "me" ? null : friendById(c.from);
-          const who = c.from === "me" ? "我" : cf ? cf.name : "？";
+          const who = c.from === "me" ? userName() : cf ? cf.name : "？";
           return `<div class="mc"><b>${esc(who)}</b>：${esc(c.text)}</div>`;
         })
         .join("")}</div>`
@@ -1158,7 +1172,7 @@ async function callGroupLLM(g, userText) {
 Members:
 ${members.map((m) => `- ${m.name}: ${m.persona}`).join("\n")}
 
-The user is ALSO a member of this group (their name is "User"). They are a real person learning English — talking WITH them is the whole point.
+The user is ALSO a member of this group (their name is "${userName()}"). They are a real person learning English — talking WITH them is the whole point.
 
 Rules:
 1. MANDATORY: the user's newest message (last line of the transcript, labeled "User") MUST be responded to. At least one reply must directly address the user or answer their question. NEVER ignore the user or only talk among yourselves.
@@ -1170,7 +1184,7 @@ Rules:
 7. Output ONLY a JSON object, no markdown fences:
 {"replies":[{"from":"MemberName","text":"...","vocab":[{"w":"word","p":"/phonetic/ or empty","m":"中文释义"}],"grammar":[{"pattern":"句型","explain":"中文讲解"}]}]}`;
   const userLine = g.chat.length
-    ? g.chat.slice(-10).map((m) => `${m.from === "me" ? "User" : friendById(m.from)?.name || "?"}: ${m.text}`).join("\n")
+    ? g.chat.slice(-10).map((m) => `${m.from === "me" ? userName() : friendById(m.from)?.name || "?"}: ${m.text}`).join("\n")
     : "(empty)";
   const body = {
     model: p.model,
@@ -1403,6 +1417,14 @@ function renderMe() {
   const aiOn = !!(cfg.key && cfg.key.length > 4);
   const totalMsgs = Object.values(state.chats).reduce((s, l) => s + l.length, 0);
   return `
+    <div class="me-card">
+      <div class="me-card-title">👤 我的信息</div>
+      <div class="me-row">
+        <span class="me-label">昵称</span>
+        <input id="userNameInput" class="me-input" type="text" placeholder="AI 会这样叫你" value="${esc(state.userName || "")}" maxlength="20">
+      </div>
+      <button class="as-btn primary" id="saveName" style="width:100%">保存昵称</button>
+    </div>
     <div class="me-card">
       <div class="me-card-title">🤖 AI 大脑 ${aiOn ? '<span class="tag-on">已连接</span>' : '<span class="tag-off">未配置</span>'}</div>
       <div class="me-row">
@@ -1639,6 +1661,16 @@ function bindMain(tab) {
     postBtn.onclick = doPost;
     $("#myMomentInput").onkeydown = (e) => {
       if (e.key === "Enter") doPost();
+    };
+  }
+
+  const saveNameBtn = $("#saveName");
+  if (saveNameBtn) {
+    saveNameBtn.onclick = () => {
+      state.userName = $("#userNameInput").value.trim();
+      save();
+      saveNameBtn.textContent = state.userName ? "✓ 已保存，AI 会叫你 " + state.userName : "✓ 已保存";
+      setTimeout(() => { saveNameBtn.textContent = "保存昵称"; }, 1600);
     };
   }
 
