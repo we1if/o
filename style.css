@@ -233,6 +233,14 @@ body {
   padding: 7px 14px; font-size: 13px; cursor: pointer;
 }
 
+/* 我的信息：头像 + 昵称 */
+.me-profile { display: flex; gap: 14px; align-items: center; }
+.me-avatar-wrap { flex: none; text-align: center; cursor: pointer; }
+.me-avatar-wrap .avatar { width: 72px; height: 72px; border-radius: 14px; font-size: 36px; }
+.me-avatar-hint { font-size: 10px; color: var(--sub); margin-top: 4px; }
+.me-profile-info { flex: 1; min-width: 0; }
+.rel-edit { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line); }
+
 /* 群聊 */
 .create-group-cell .avatar { display: flex; }
 .member-pick { display: flex; flex-direction: column; }

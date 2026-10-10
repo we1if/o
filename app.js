@@ -544,6 +544,7 @@ let state = {
   avatars: {},      // key -> dataURL（用户上传的头像，key: 'me' 或 friendId）
   llm: { provider: "deepseek", key: "", model: "", baseUrl: "" }, // AI 配置
   userName: "",     // 用户昵称（群聊、AI 提示词里用）
+  relationships: {}, // friendId -> 自定义关系描述（覆盖预设，点头像可编辑）
   lastOpenDate: "", // 记录上次打开的日期（YYYY-MM-DD），用于触发早安戳一戳
   lastMorningDate: "",
 };
@@ -595,7 +596,7 @@ function buildSystemPrompt(f) {
   return `You are "${f.name}", roleplaying in a casual chat app. ${f.bio}.
 
 CHARACTER: ${f.persona}
-RELATIONSHIP WITH USER: ${f.relationship || "You and the user are good friends — warm, casual, teasing is fine."}
+RELATIONSHIP WITH USER: ${state.relationships[f.id] || f.relationship || "You and the user are good friends — warm, casual, teasing is fine."}
 The user's name is "${uname}" — address them by name naturally (not in every message).
 
 LANGUAGE: Default to natural spoken English at CEFR B1 level. If the user explicitly asks to practice, switch to, or receive explanations in another language (Chinese, Japanese, Korean, etc.), follow that request freely in BOTH the reply language and the teaching language. Vocab/grammar explanations in the requested language.
@@ -1170,7 +1171,7 @@ async function callGroupLLM(g, userText) {
   const system = `You are simulating a fun group chat between the members below and ONE human user.
 
 Members:
-${members.map((m) => `- ${m.name}: ${m.persona}`).join("\n")}
+${members.map((m) => `- ${m.name}: ${m.persona} (Relationship with the user: ${state.relationships[m.id] || m.relationship || "good friends"})`).join("\n")}
 
 The user is ALSO a member of this group (their name is "${userName()}"). They are a real person learning English — talking WITH them is the whole point.
 
@@ -1419,11 +1420,19 @@ function renderMe() {
   return `
     <div class="me-card">
       <div class="me-card-title">👤 我的信息</div>
-      <div class="me-row">
-        <span class="me-label">昵称</span>
-        <input id="userNameInput" class="me-input" type="text" placeholder="AI 会这样叫你" value="${esc(state.userName || "")}" maxlength="20">
+      <div class="me-profile">
+        <div class="me-avatar-wrap" id="meAvatar" title="点击更换头像">
+          ${myAvatarHtml("profile-avatar")}
+          <div class="me-avatar-hint">换头像</div>
+        </div>
+        <div class="me-profile-info">
+          <div class="me-row">
+            <span class="me-label">昵称</span>
+            <input id="userNameInput" class="me-input" type="text" placeholder="AI 会这样叫你" value="${esc(state.userName || "")}" maxlength="20">
+          </div>
+          <button class="as-btn primary" id="saveName" style="width:100%">保存昵称</button>
+        </div>
       </div>
-      <button class="as-btn primary" id="saveName" style="width:100%">保存昵称</button>
     </div>
     <div class="me-card">
       <div class="me-card-title">🤖 AI 大脑 ${aiOn ? '<span class="tag-on">已连接</span>' : '<span class="tag-off">未配置</span>'}</div>
@@ -1673,6 +1682,8 @@ function bindMain(tab) {
       setTimeout(() => { saveNameBtn.textContent = "保存昵称"; }, 1600);
     };
   }
+  const meAvatar = $("#meAvatar");
+  if (meAvatar) meAvatar.onclick = () => openAvatarSettings("me");
 
   const saveBtn = $("#saveLLM");
   if (saveBtn) {
@@ -1769,8 +1780,11 @@ function bindChat() {
   app.querySelectorAll(".bubble").forEach((el) => {
     el.onclick = () => openPanel(parseInt(el.dataset.msg, 10));
   });
-  // 点击头像 → 头像设置面板
-  app.querySelectorAll(".msg .avatar").forEach((el) => {
+  // 点击头像 → 头像/关系设置（自己 vs 好友分开）
+  app.querySelectorAll(".msg.me .avatar").forEach((el) => {
+    el.onclick = () => openAvatarSettings("me");
+  });
+  app.querySelectorAll(".msg.friend .avatar").forEach((el) => {
     el.onclick = () => openAvatarSettings(state.activeFriend);
   });
 }
@@ -1892,6 +1906,12 @@ function openAvatarSettings(targetId) {
       </div>
       <div class="as-tip">图片会自动裁成方形，仅保存在你自己的浏览器里</div>
     </div>
+    ${isMe ? "" : `
+    <div class="rel-edit">
+      <div class="sec-title">💞 TA 和你的关系（决定 TA 对你的语气）</div>
+      <textarea id="relInput" class="diary-textarea" placeholder="描述你们的关系，比如：他是我的损友，天天怼我但很护我">${esc(state.relationships[targetId] || f.relationship || "")}</textarea>
+      <button class="as-btn" id="saveRel" style="width:100%;margin-top:8px">保存关系设定</button>
+    </div>`}
     <input type="file" id="fileInput" accept="image/*" style="display:none">
   `;
   app.appendChild(mask);
@@ -1922,6 +1942,17 @@ function openAvatarSettings(targetId) {
     close();
     render();
   };
+  const relBtn = panel.querySelector("#saveRel");
+  if (relBtn) {
+    relBtn.onclick = () => {
+      const v = panel.querySelector("#relInput").value.trim();
+      if (v) state.relationships[targetId] = v;
+      else delete state.relationships[targetId]; // 清空则回到默认人设
+      save();
+      relBtn.textContent = "✓ 已保存，下次对话生效";
+      setTimeout(() => (relBtn.textContent = "保存关系设定"), 1600);
+    };
+  }
 }
 
 // 把任意图片压成正方形 dataURL（中心裁剪 + 缩到 size×size，防止 localStorage 爆掉）
