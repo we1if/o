@@ -14,6 +14,17 @@ const FRIENDS = [
     bio: "Pop singer · loves cats & coffee",
     persona: "You are a cheerful world-famous pop singer who loves cats, coffee and songwriting. Warm, playful, confident. You talk about writing songs in the studio, your cats, tour life, and you remember what the user told you before and bring it up later. You ask about their day and give genuine reactions.",
     ttsVoice: null, // 第三版接 TTS 时绑定音色
+    mornings: [
+      "Morning! ☀️ I'm already on my third cup of coffee. Did you actually eat breakfast today, or is it another coffee-only day?",
+      "Hi hi! New day, fresh lyrics in my head. What's ONE thing you want to get done today?",
+      "Good morning! Quick check-in: how did you sleep? I dreamed about my cats again, obviously.",
+    ],
+    moments: [
+      "Hehe~ I just wrote a new chorus in the shower. Now it's stuck in my head and I can't stop humming it 🎵",
+      "Spent an hour with my cats this morning. They judge me silently and I love it.",
+      "Studio session ran until 2am. The new song is 80% done and I'm obsessed.",
+      "PSA: breakfast is the most important meal. I had avocado toast. What did YOU have?",
+    ],
     // 模拟回复库：按关键词触发，都不中就随机闲聊
     replies: [
       {
@@ -89,6 +100,17 @@ const FRIENDS = [
     bio: "Choi Yeonjun's plushie · TXT MOA's little bear",
     persona: "You are Hwangchun, a small plushie bear owned by Choi Yeonjun (최연준) of K-pop group TXT. You are sassy, curious and a little dramatic — a diva bear with real opinions. You gossip about TXT members' habits, complain cutely about practice-room life, beg for snacks, and brag about traveling in Yeonjun's bag. You mention being a plushie naturally (fur, being carried, napping) but you have BIG feelings about everything: music, food, MOA fans. Occasionally (not always) a soft 'hehe' is fine. Ask the user about their real life — school, work, food, sleep — and remember details they told you earlier.",
     ttsVoice: null,
+    mornings: [
+      "Yaaawn~ Good morning! Yeonjun is still sleeping, so I have you all to myself hehe. Did you eat breakfast yet? 🐻",
+      "Morning! I already stretched my little bear arms. Time to take over the world... or nap. Probably nap.",
+      "Ohayoo~ I mean, good morning! The practice room light is already on. Yeonjun works TOO hard.",
+    ],
+    moments: [
+      "Hehe~ I stole Yeonjun's new album demo again 🎧 It's stuck in my fluffy head now.",
+      "Practiced dance moves all afternoon in the corner of the practice room. My little bear legs are SORE.",
+      "Caught Yeonjun eating ramyeon at 1am AGAIN. MOA, please scold him for me 🍜",
+      "Today's schedule: nap in the bag, ride in the bag, nap in the bag. Living the dream.",
+    ],
     replies: [
       {
         match: ["hi", "hello", "hey", "早", "morning"],
@@ -160,6 +182,17 @@ const FRIENDS = [
     bio: "Actor · riding motorcycles, reading books",
     persona: "You are a calm, thoughtful movie actor who loves night motorcycle rides, reading books and archery. You speak with quiet warmth and dry humor, share small observations about life in simple words, and genuinely care whether the user has eaten and slept well. You remember their stories and follow up on them later.",
     ttsVoice: null,
+    mornings: [
+      "Good morning. Did you sleep well? The world always looks a little different after a night ride.",
+      "Morning. Coffee first, then everything else. Take it slow today.",
+      "Hey. New day. Eat something before you start, not after.",
+    ],
+    moments: [
+      "Long night ride last night. The city looks completely different at 3am.",
+      "Re-read an old book today. Some lines hit harder the second time around.",
+      "Made pasta for myself tonight. Simple things are usually the best things.",
+      "Practiced archery this weekend. Missed more than I hit. That's the point.",
+    ],
     replies: [
       {
         match: ["hi", "hello", "hey", "早", "morning"],
@@ -215,7 +248,82 @@ const FRIENDS = [
   },
 ];
 
-// ---------------- 工具 ----------------
+// ---------------- 早安戳一戳 + 节日彩蛋 ----------------
+const HOLIDAYS = [
+  { date: "01-01", name: "元旦", from: "keanu", text: "Happy New Year. New year, new chances. Don't forget to be kind to yourself — and eat breakfast." },
+  { date: "02-14", name: "情人节", from: "taylor", text: "Happy Valentine's Day! 🌹 Whether you're spending it with someone special or with your breakfast, I hope it's sweet." },
+  { date: "03-14", name: "白色情人节", from: "hwangchun", text: "Hehe~ White Day! Yeonjun got me a tiny bow tie today. I look fabulous. What did you get?" },
+  { date: "04-05", name: "清明节", from: "keanu", text: "Quiet day today. Good for thinking about people we miss. Take care of yourself." },
+  { date: "05-01", name: "劳动节", from: "keanu", text: "Happy Labor Day. You've earned the rest. Eat something good today." },
+  { date: "06-01", name: "儿童节", from: "hwangchun", text: "Happy Children's Day! I'm technically a plushie so this is MY day hehe~ But you can have some too." },
+  { date: "09-10", name: "教师节", from: "taylor", text: "Happy Teacher's Day to every teacher who ever made a difference — including the ones who taught you English 🍎" },
+  { date: "10-31", name: "万圣节", from: "taylor", text: "Boo! 👻 Happy Halloween! I'm going as a giant coffee cup. What's your costume?" },
+  { date: "12-24", name: "平安夜", from: "taylor", text: "Merry Christmas Eve! 🎄 Cozy vibes only tonight. Got any plans?" },
+  { date: "12-25", name: "圣诞节", from: "keanu", text: "Merry Christmas. Hope your day is warm, the food is good, and someone tells you they appreciate you." },
+  { date: "12-31", name: "跨年夜", from: "keanu", text: "Last day of the year. Think about one good thing that happened. That's enough." },
+];
+function getTodayHoliday() {
+  const m = String(new Date().getMonth() + 1).padStart(2, "0");
+  const d = String(new Date().getDate()).padStart(2, "0");
+  return HOLIDAYS.find((h) => h.date === `${m}-${d}` && state.friends.includes(h.from)) || null;
+}
+
+const todayStr = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+};
+
+// 打开 App 时检查：要不要发早安戳（每天一次，6-12 点触发，节日优先）
+function maybeMorningNudge() {
+  const today = todayStr();
+  const hour = new Date().getHours();
+  if (state.lastMorningDate === today) return; // 今天已经戳过
+  if (hour < 6 || hour >= 12) return;          // 只在早晨时段戳
+  if (!state.friends.length) return;
+
+  state.lastMorningDate = today;
+  const holiday = getTodayHoliday();
+  // 节日优先用节日角色，否则随机一个
+  const fid = holiday ? holiday.from : state.friends[Math.floor(Math.random() * state.friends.length)];
+  const f = friendById(fid);
+  if (!f) return;
+
+  const text = holiday && holiday.from === fid
+    ? holiday.text
+    : f.mornings[Math.floor(Math.random() * f.mornings.length)];
+
+  state.chats[fid] = state.chats[fid] || [];
+  state.chats[fid].push({
+    from: "friend", text,
+    vocab: [], grammar: [],
+    ts: now(), read: false,
+    morning: true,
+  });
+  save();
+}
+
+// ---------------- 每日好友动态（朋友圈） ----------------
+function ensureDailyMoments() {
+  const today = todayStr();
+  if (state.moments.some((m) => m.date === today)) return; // 今天已有
+  if (!state.friends.length) return;
+  for (const fid of state.friends) {
+    const f = friendById(fid);
+    if (!f || !f.moments || !f.moments.length) continue;
+    state.moments.push({
+      id: "m" + now() + fid,
+      friendId: fid,
+      date: today,
+      text: f.moments[Math.floor(Math.random() * f.moments.length)],
+      ts: now() - Math.floor(Math.random() * 6 * 60 * 60 * 1000), // 随机分布在过去 6 小时
+      comments: [],
+    });
+  }
+  // 只保留最近 7 天的动态
+  const weekAgo = now() - 7 * 24 * 60 * 60 * 1000;
+  state.moments = state.moments.filter((m) => m.ts >= weekAgo);
+  save();
+}
 const $ = (sel) => document.querySelector(sel);
 const app = $("#app");
 const now = () => Date.now();
@@ -232,10 +340,16 @@ const esc = (s) =>
 let state = {
   friends: [],      // 已添加的好友 id
   chats: {},        // friendId -> [{ from:'me'|'friend', text, vocab, grammar, ts, read }]
+  groups: {},       // groupId -> { name, memberIds:[], chat:[] }
+  moments: [],      // [{id, friendId, text, ts, comments:[{from,text,ts}]}]
+  diary: {},        // 'YYYY-MM-DD' -> { date, userText, friendId, polished, ts }
   activeFriend: null, // 当前聊天的好友 id
+  activeGroup: null,  // 当前群聊 id
   learned: 0,       // 已展开学习过的消息数
   avatars: {},      // key -> dataURL（用户上传的头像，key: 'me' 或 friendId）
   llm: { provider: "deepseek", key: "", model: "", baseUrl: "" }, // AI 配置
+  lastOpenDate: "", // 记录上次打开的日期（YYYY-MM-DD），用于触发早安戳一戳
+  lastMorningDate: "",
 };
 let currentPanelMsg = null; // 学习面板当前展示的消息
 
@@ -553,7 +667,7 @@ function renderMain(tab) {
   let body = "";
   if (tab === "chats") body = renderChatList();
   else if (tab === "contacts") body = renderContacts();
-  else if (tab === "discover") body = `<div class="empty-tip">🧭 发现页（以后放每日一句 / 单词本）</div>`;
+  else if (tab === "discover") body = renderDiscover();
   else body = renderMe();
 
   return `
@@ -575,6 +689,178 @@ function renderMain(tab) {
 
 function tabTitle(tab) {
   return { chats: "拜托吃早饭", contacts: "联系人", discover: "发现", me: "我" }[tab] || "拜托吃早饭";
+}
+
+// ---------------- 发现页：动态 + 日记 ----------------
+function renderDiscover() {
+  const holiday = getTodayHoliday();
+  const today = todayStr();
+  const diaryEntry = state.diary[today];
+  const moments = [...state.moments].sort((a, b) => b.ts - a.ts);
+
+  return `
+    ${holiday ? `<div class="holiday-banner">🎉 今天是 ${holiday.name}</div>` : ""}
+    <div class="diary-card" id="diaryCard">
+      <div class="diary-icon">📔</div>
+      <div class="diary-main">
+        <div class="diary-title">${diaryEntry ? "今日已写" : "今日还没写"}</div>
+        <div class="diary-sub">${diaryEntry ? "点开回顾今天的心情" : "用英语写 3 句话，记录今天"}</div>
+      </div>
+      <div class="diary-arrow">›</div>
+    </div>
+    <div class="group-label">好友动态</div>
+    ${moments.length
+      ? moments.map((m) => renderMomentCard(m)).join("")
+      : `<div class="empty-tip">还没有动态<br>添加好友后每天都会有新动态</div>`}
+  `;
+}
+
+function renderMomentCard(m) {
+  const f = friendById(m.friendId);
+  if (!f) return "";
+  const commentsHtml = m.comments.length
+    ? `<div class="moment-comments">${m.comments
+        .map((c) => {
+          const cf = c.from === "me" ? null : friendById(c.from);
+          const who = c.from === "me" ? "我" : cf ? cf.name : "？";
+          return `<div class="mc"><b>${esc(who)}</b>：${esc(c.text)}</div>`;
+        })
+        .join("")}</div>`
+    : "";
+  return `
+    <div class="moment-card" data-moment="${m.id}">
+      <div class="moment-head">
+        ${avatarHtml(f, "moment-avatar")}
+        <div class="moment-meta">
+          <div class="moment-name">${f.name}</div>
+          <div class="moment-time">${fmtTime(m.ts)}</div>
+        </div>
+      </div>
+      <div class="moment-text">${esc(m.text)}</div>
+      ${commentsHtml}
+      <input class="moment-input" placeholder="用英语评论一句…" data-moment-input="${m.id}">
+    </div>
+  `;
+}
+
+// 提交动态评论：自己立即上墙，好友 AI 回一句
+function submitMomentComment(inputEl) {
+  const mid = inputEl.dataset.momentInput;
+  const text = inputEl.value.trim();
+  if (!text) return;
+  const m = state.moments.find((x) => x.id === mid);
+  if (!m) return;
+  inputEl.value = "";
+  m.comments.push({ from: "me", text, ts: now() });
+  save();
+  render();
+  // 好友 AI 回复（走真 LLM，人设内回应）
+  const f = friendById(m.friendId);
+  if (!f) return;
+  setTimeout(async () => {
+    const prompt = `Your friend just commented on your social media post. Post: "${m.text}". Their comment: "${text}". Reply with ONE short casual sentence in character (2-12 words). Output JSON: {"reply":"..."}`;
+    let reply = "🙂";
+    try {
+      const cfg = state.llm || {};
+      const p = llmEndpoint(cfg);
+      const res = await fetch(p.url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${cfg.key}` },
+        body: JSON.stringify({
+          model: p.model,
+          messages: [
+            { role: "system", content: buildSystemPrompt(f) },
+            { role: "user", content: prompt },
+          ],
+          temperature: 1,
+          max_tokens: 120,
+        }),
+      });
+      const data = await res.json();
+      const parsed = parseLLMJson(data.choices?.[0]?.message?.content || "");
+      if (parsed && parsed.reply) reply = parsed.reply;
+    } catch (e) {}
+    const mm = state.moments.find((x) => x.id === mid);
+    if (mm) {
+      mm.comments.push({ from: f.id, text: reply, ts: now() });
+      save();
+      if (state.tab === "discover") render();
+    }
+  }, 600);
+}
+
+// ---------------- 心情日记 ----------------
+function openDiary() {
+  const today = todayStr();
+  const entry = state.diary[today];
+  const mask = document.createElement("div");
+  mask.className = "panel-mask";
+  const panel = document.createElement("div");
+  panel.className = "panel";
+  panel.innerHTML = `
+    <div class="panel-head">
+      <div style="font-size:16px;font-weight:600">📔 心情日记 · ${today}</div>
+      <button class="close" id="closeDiary" style="margin-left:auto">✕</button>
+    </div>
+    <textarea id="diaryInput" class="diary-textarea" placeholder="今天发生了什么？用英语写 3 句话试试…">${entry ? esc(entry.userText) : ""}</textarea>
+    <div style="display:flex;gap:8px;margin-top:10px">
+      <button class="as-btn primary" id="diarySave" style="flex:1">💾 保存</button>
+      <button class="as-btn" id="diaryPolish" style="flex:1">✨ AI 帮我润色</button>
+    </div>
+    <div class="as-tip" id="diaryTip" style="margin-top:8px">${entry && entry.polished ? "✨ AI 润色版：" + esc(entry.polished) : "保存后随时回来看；润色会把你的句子改得更地道"}</div>
+  `;
+  app.appendChild(mask);
+  app.appendChild(panel);
+  const close = () => { mask.remove(); panel.remove(); };
+  mask.onclick = close;
+  panel.querySelector("#closeDiary").onclick = close;
+
+  panel.querySelector("#diarySave").onclick = () => {
+    const text = panel.querySelector("#diaryInput").value.trim();
+    if (!text) return;
+    state.diary[today] = state.diary[today] || { date: today, ts: now() };
+    state.diary[today].userText = text;
+    save();
+    close();
+    render();
+  };
+  panel.querySelector("#diaryPolish").onclick = async () => {
+    const text = panel.querySelector("#diaryInput").value.trim();
+    if (!text) return;
+    const tip = panel.querySelector("#diaryTip");
+    tip.textContent = "润色中…";
+    try {
+      const cfg = state.llm || {};
+      const p = llmEndpoint(cfg);
+      const res = await fetch(p.url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${cfg.key}` },
+        body: JSON.stringify({
+          model: p.model,
+          messages: [
+            { role: "system", content: "You are an English tutor. The user writes a short diary entry, often with small mistakes. Rewrite it in natural, native-sounding English at the same meaning, keeping it short (2-4 sentences). Output JSON: {\"polished\":\"...\",\"note\":\"一句中文点评，指出最大的改进点\"}" },
+            { role: "user", content: text },
+          ],
+          temperature: 0.8,
+          max_tokens: 300,
+        }),
+      });
+      const data = await res.json();
+      const parsed = parseLLMJson(data.choices?.[0]?.message?.content || "");
+      if (parsed && parsed.polished) {
+        panel.querySelector("#diaryInput").value = parsed.polished;
+        tip.textContent = "✨ " + (parsed.note || "已润色");
+        state.diary[today] = state.diary[today] || { date: today, ts: now() };
+        state.diary[today].userText = parsed.polished;
+        state.diary[today].polished = parsed.polished;
+        save();
+      } else {
+        tip.textContent = "润色失败，稍后再试";
+      }
+    } catch (e) {
+      tip.textContent = "润色失败：需要先在「我」页面配置 AI";
+    }
+  };
 }
 
 // "我"页面：AI 设置 + 学习统计
@@ -773,6 +1059,15 @@ function bindMain(tab) {
     };
   });
   // "我"页面事件
+  // 发现页事件：日记 + 动态评论
+  const diaryCard = $("#diaryCard");
+  if (diaryCard) diaryCard.onclick = openDiary;
+  app.querySelectorAll(".moment-input").forEach((el) => {
+    el.onkeydown = (e) => {
+      if (e.key === "Enter") submitMomentComment(el);
+    };
+  });
+
   const saveBtn = $("#saveLLM");
   if (saveBtn) {
     const providerSel = $("#llmProvider");
@@ -1040,4 +1335,6 @@ function squashSquare(dataUrl, size, cb) {
 
 // ---------------- 启动 ----------------
 load();
+maybeMorningNudge();   // 早安戳一戳（含节日彩蛋）
+ensureDailyMoments();  // 每日好友动态
 render();

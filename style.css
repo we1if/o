@@ -178,4 +178,43 @@ body {
 .me-stats { display: flex; justify-content: space-around; padding: 6px 0; }
 .me-stats .stat { text-align: center; }
 .me-stats .stat b { display: block; font-size: 22px; color: var(--green); }
+
+/* ---------- 发现页：动态 + 日记 ---------- */
+.holiday-banner {
+  background: linear-gradient(135deg, #ffe6f2, #e6f4ff);
+  color: #b0307a; text-align: center; padding: 10px; font-size: 14px; font-weight: 600;
+  border-bottom: 1px solid var(--line);
+}
+.diary-card {
+  display: flex; align-items: center; gap: 12px; margin: 12px; padding: 14px;
+  background: linear-gradient(135deg, #fdf6e3, #fff); border-radius: 12px;
+  border: 1px solid #f0e6c8; cursor: pointer;
+}
+.diary-card:active { opacity: .85; }
+.diary-icon { font-size: 30px; }
+.diary-main { flex: 1; }
+.diary-title { font-size: 15px; font-weight: 600; }
+.diary-sub { font-size: 12px; color: var(--sub); margin-top: 2px; }
+.diary-arrow { font-size: 22px; color: #ccc; }
+.diary-textarea {
+  width: 100%; min-height: 110px; border: 1px solid var(--line); border-radius: 10px;
+  padding: 10px; font-size: 14px; font-family: inherit; resize: vertical; outline: none;
+}
+.diary-textarea:focus { border-color: var(--green); }
+.moment-card {
+  background: #fff; border-bottom: 1px solid var(--line); padding: 14px 16px;
+}
+.moment-head { display: flex; align-items: center; gap: 10px; }
+.moment-avatar { width: 40px; height: 40px; font-size: 22px; border-radius: 8px; }
+.moment-name { font-size: 14px; font-weight: 600; }
+.moment-time { font-size: 11px; color: var(--sub); margin-top: 2px; }
+.moment-text { font-size: 14.5px; line-height: 1.55; margin-top: 10px; }
+.moment-comments { background: #f6f8f7; border-radius: 8px; padding: 8px 10px; margin-top: 10px; }
+.mc { font-size: 13px; color: #444; line-height: 1.5; }
+.mc b { color: var(--green); }
+.moment-input {
+  width: 100%; border: none; border-bottom: 1px solid var(--line); background: transparent;
+  padding: 8px 2px; font-size: 13px; outline: none; margin-top: 8px; font-family: inherit;
+}
+.moment-input:focus { border-bottom-color: var(--green); }
 .me-stats .stat span { font-size: 12px; color: var(--sub); }
