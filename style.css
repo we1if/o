@@ -103,19 +103,7 @@ body {
 }
 .msg.me .bubble { background: var(--bubble-me); }
 .bubble.speaking { outline: 2px solid var(--green); }
-/* 气泡右下角小三角：点击展开学习面板（带点击热区） */
-.badge-exp {
-  position: absolute; bottom: -4px; right: 4px;
-  width: 22px; height: 16px; cursor: pointer; z-index: 2;
-}
-.badge-exp::after {
-  content: ""; position: absolute; right: 4px; bottom: 0;
-  border-style: solid; border-width: 0 0 8px 8px;
-  border-color: transparent transparent #c2c2c2 transparent;
-}
-.badge-exp:hover::after { border-color: transparent transparent var(--green) transparent; }
-.msg.me .badge-exp { right: auto; left: 4px; }
-.msg.me .badge-exp::after { border-color: transparent transparent #7fc95e transparent; }
+/* 旧的小三角样式保留，但因 JS 已不渲染，三角不再出现 */
 .typing { display: inline-flex; gap: 4px; padding: 12px 14px; }
 .typing i { width: 6px; height: 6px; border-radius: 50%; background: #bbb; animation: blink 1.2s infinite; }
 .typing i:nth-child(2) { animation-delay: .2s; }

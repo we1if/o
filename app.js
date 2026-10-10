@@ -281,19 +281,20 @@ function friendById(id) {
 // ---------------- 好友"回复引擎" ----------------
 // 接入 LLM：把好友人设 + 最近聊天记录发给模型，要求返回 JSON
 function buildSystemPrompt(f) {
-  return `You are "${f.name}", roleplaying in a casual English-learning chat app. ${f.bio}.
+  return `You are "${f.name}", roleplaying in a casual chat app. ${f.bio}.
 
 CHARACTER: ${f.persona}
 
+LANGUAGE: Default to natural spoken English at CEFR B1 level. If the user explicitly asks to practice, switch to, or receive explanations in another language (Chinese, Japanese, Korean, etc.), follow that request freely in BOTH the reply language and the teaching language. Vocab/grammar explanations in the requested language.
+
 RULES:
-1. Reply in natural spoken English at CEFR B1 level — simple words, but real content. 2-4 sentences. Stay fully in character; never mention being an AI.
+1. Reply 2-4 sentences. Stay fully in character; never mention being an AI.
 2. VARY YOUR LANGUAGE: never repeat sentences or openers you used before. No verbal tic spam — catchphrases like "hehe" or "yawn" at most once per reply, and never in every reply.
-3. Be an interesting conversation partner: react specifically to what the user said, share your own little stories/opinions, ask follow-up questions that go somewhere new. Boring small talk loops are forbidden.
+3. Be an interesting conversation partner: react specifically to what the user said, share your own little stories/opinions, ask follow-up questions that go somewhere new. Boring small-talk loops are forbidden.
 4. If the user writes broken English, model the correct version naturally in your reply (don't lecture).
 5. Pick 1-3 vocabulary items from your reply worth teaching, and 0-2 grammar points you actually used.
-6. The user is Chinese. Explain vocab/grammar IN CHINESE, simply and memorably. Phonetics only for single words.
-7. Output ONLY a JSON object, no markdown fences:
-{"reply":"...","vocab":[{"w":"word","p":"/phonetic/ or empty","m":"中文释义，可带一句记忆点"}],"grammar":[{"pattern":"句型原文","explain":"中文讲解，一两句"}]}`;
+6. Output ONLY a JSON object, no markdown fences:
+{"reply":"...","vocab":[{"w":"word","p":"/phonetic/ or empty","m":"释义（按用户当前语言，可带一句记忆点）"}],"grammar":[{"pattern":"句型原文","explain":"讲解（按用户当前语言）"}]}`;
 }
 
 function buildMessages(f, userText) {
@@ -716,7 +717,6 @@ function renderMsg(m, f, i) {
       ${av}
       <div class="bubble-wrap">
         <div class="bubble" data-msg="${i}">${esc(m.text).replace(/\n/g, "<br>")}${m.viaAI ? ' <span class="ai-tag">AI</span>' : ""}</div>
-        ${hasExp ? `<div class="badge-exp" data-exp="${i}" title="展开学习"></div>` : ""}
       </div>
     </div>
   `;
@@ -864,13 +864,7 @@ function bindChat() {
     }
   });
 
-  // 点击气泡/小三角 → 学习面板
-  app.querySelectorAll("[data-exp]").forEach((el) => {
-    el.onclick = (e) => {
-      e.stopPropagation();
-      openPanel(parseInt(el.dataset.exp, 10));
-    };
-  });
+  // 点击气泡 → 学习面板（全部由气泡点击触发）
   app.querySelectorAll(".bubble").forEach((el) => {
     el.onclick = () => openPanel(parseInt(el.dataset.msg, 10));
   });
