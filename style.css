@@ -258,4 +258,21 @@ body {
   background: #f6f8f7; border-radius: 8px; padding: 8px 10px; margin-bottom: 6px; font-size: 13px; color: #333;
 }
 .mem-del { color: #c0392b; cursor: pointer; padding: 2px 6px; flex: none; }
+
+/* 登录/注册 */
+.auth-wrap { height: 100%; display: flex; align-items: center; justify-content: center; padding: 20px; }
+.auth-card {
+  width: 100%; max-width: 360px; background: #fff; border-radius: 16px; padding: 28px 22px;
+  box-shadow: 0 10px 40px rgba(0,0,0,.12);
+}
+.auth-logo { font-size: 44px; text-align: center; }
+.auth-title { font-size: 20px; font-weight: 700; text-align: center; margin-top: 6px; }
+.auth-sub { font-size: 13px; color: var(--sub); text-align: center; margin: 4px 0 18px; }
+.auth-card .me-row { margin-bottom: 12px; }
+.auth-err { color: #c0392b; font-size: 12px; min-height: 18px; margin-top: 8px; text-align: center; }
+.auth-switch { text-align: center; font-size: 13px; color: var(--sub); margin-top: 8px; }
+.auth-switch span { color: var(--green); cursor: pointer; font-weight: 600; }
+.auth-adv { margin-top: 14px; font-size: 12px; color: var(--sub); }
+.auth-adv summary { cursor: pointer; }
+.auth-adv .me-input { margin-top: 8px; width: 100%; }
 .me-stats .stat span { font-size: 12px; color: var(--sub); }

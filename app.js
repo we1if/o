@@ -570,6 +570,7 @@ let currentPanelMsg = null; // 学习面板当前展示的消息
 // ---------------- 持久化 ----------------
 function save() {
   localStorage.setItem("bczf", JSON.stringify(state));
+  queueCloudSync(); // 已登录则防抖推送到云端
 }
 function load() {
   try {
@@ -874,6 +875,7 @@ function speak(text, friendId) {
 
 // ---------------- 渲染：主框架 ----------------
 function render() {
+  if (!getToken()) { renderAuthScreen("login"); return; } // 未登录 → 登录界面
   const tab = state.tab || "chats";
   if (state.activeGroup) {
     app.innerHTML = renderGroupChat();
@@ -1654,6 +1656,14 @@ function renderMe() {
   const totalMsgs = Object.values(state.chats).reduce((s, l) => s + l.length, 0);
   return `
     <div class="me-card">
+      <div class="me-card-title">☁ 账号</div>
+      <div class="me-row">
+        <span class="me-label">当前</span>
+        <div style="flex:1;font-size:14px">@${esc(getMyUsername())} <span id="syncBadge" style="font-size:11px"></span></div>
+      </div>
+      <button class="as-btn" id="logoutBtn" style="width:100%;color:#c0392b">退出登录（数据已存云端，换设备登录可找回）</button>
+    </div>
+    <div class="me-card">
       <div class="me-card-title">👤 我的信息</div>
       <div class="me-profile">
         <div class="me-avatar-wrap" id="meAvatar" title="点击更换头像">
@@ -1960,6 +1970,16 @@ function bindMain(tab) {
   }
   const meAvatar = $("#meAvatar");
   if (meAvatar) meAvatar.onclick = () => openAvatarSettings("me");
+  const logoutBtn = $("#logoutBtn");
+  if (logoutBtn) {
+    logoutBtn.onclick = () => {
+      if (!confirm("退出登录？\n你的数据已保存在云端，换任何设备登录同一个账号都能找回。")) return;
+      api("POST", "/api/logout").catch(() => {});
+      clearAuth(false);
+      render();
+    };
+  }
+  updateSyncBadge();
 
   const saveBtn = $("#saveLLM");
   if (saveBtn) {
@@ -2302,7 +2322,22 @@ function squashSquare(dataUrl, size, cb) {
 
 // ---------------- 启动 ----------------
 load();
-maybeMorningNudge();   // 早安戳一戳（含节日彩蛋）
-ensureDailyMoments();  // 每日好友动态
-maybeProactivePing();  // 主动私聊（失踪戳 + 生日祝福）
-render();
+if (!getToken()) {
+  renderAuthScreen("login");
+} else {
+  maybeMorningNudge();   // 早安戳一戳（含节日彩蛋）
+  ensureDailyMoments();  // 每日好友动态
+  maybeProactivePing();  // 主动私聊（失踪戳 + 生日祝福）
+  render();
+  // 后台拉云端：其他设备可能有更新
+  api("GET", "/api/data").then((r) => {
+    if (!r.data) { queueCloudSync(); return; }
+    const server = JSON.parse(r.data);
+    const serverAt = server._syncedAt || r.updated_at || 0;
+    if (serverAt > (state._syncedAt || 0)) {
+      state = server;
+      load();
+      render();
+    }
+  }).catch(() => {});
+}
