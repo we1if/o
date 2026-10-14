@@ -57,6 +57,8 @@ export default {
         env.DB.prepare("CREATE TABLE IF NOT EXISTS friend_requests (id INTEGER PRIMARY KEY AUTOINCREMENT, from_user TEXT NOT NULL, to_user TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'pending', created_at INTEGER NOT NULL, UNIQUE(from_user, to_user))"),
         env.DB.prepare("CREATE TABLE IF NOT EXISTS friendships (a TEXT NOT NULL, b TEXT NOT NULL, created_at INTEGER NOT NULL, UNIQUE(a, b))"),
         env.DB.prepare("CREATE TABLE IF NOT EXISTS dm_messages (id INTEGER PRIMARY KEY AUTOINCREMENT, sender TEXT NOT NULL, receiver TEXT NOT NULL, text TEXT NOT NULL, created_at INTEGER NOT NULL)"),
+        env.DB.prepare("CREATE TABLE IF NOT EXISTS gc_groups (id TEXT PRIMARY KEY, name TEXT NOT NULL, owner TEXT NOT NULL, members TEXT NOT NULL, ai_members TEXT NOT NULL DEFAULT '[]', created_at INTEGER NOT NULL)"),
+        env.DB.prepare("CREATE TABLE IF NOT EXISTS gc_messages (id INTEGER PRIMARY KEY AUTOINCREMENT, group_id TEXT NOT NULL, sender TEXT NOT NULL, text TEXT NOT NULL, created_at INTEGER NOT NULL)"),
       ]);
     } catch (e) {
       return json({ error: "建表失败: " + e.message }, 500);
@@ -241,6 +243,83 @@ export default {
       const rows = await env.DB.prepare("SELECT id, sender, text, created_at FROM dm_messages WHERE ((sender = ? AND receiver = ?) OR (sender = ? AND receiver = ?)) AND id > ? ORDER BY id ASC LIMIT 100")
         .bind(me, other, other, me, after).all();
       return json({ messages: rows.results || [] });
+    }
+
+    // ---------- 混编群（真人+AI，需要登录） ----------
+    // 建群：members = 真人用户名数组；ai = [{id,name,emoji}]
+    if (path === "/api/gc/create" && request.method === "POST") {
+      if (!me) return json({ error: "未登录" }, 401);
+      const body = await request.json().catch(() => ({}));
+      const name = String(body.name || "").trim().slice(0, 30) || "英语修罗场";
+      const members = Array.isArray(body.members) ? body.members.map(String).filter((u) => u && u !== me) : [];
+      const ai = Array.isArray(body.ai) ? body.ai.filter((c) => c && c.id && c.name).slice(0, 10) : [];
+      if (members.length + ai.length < 2) return json({ error: "成员太少，至少凑 2 个（含AI）" }, 400);
+      for (const u of members) {
+        const exists = await env.DB.prepare("SELECT id FROM users WHERE username = ?").bind(u).first();
+        if (!exists) return json({ error: `用户 ${u} 不存在` }, 404);
+      }
+      const gid = "gc-" + crypto.randomUUID().slice(0, 12);
+      await env.DB.prepare("INSERT INTO gc_groups (id, name, owner, members, ai_members, created_at) VALUES (?, ?, ?, ?, ?, ?)")
+        .bind(gid, name, me, JSON.stringify(members), JSON.stringify(ai), Date.now()).run();
+      return json({ ok: true, id: gid });
+    }
+
+    // 我参与的群列表
+    if (path === "/api/gc/list" && request.method === "GET") {
+      if (!me) return json({ error: "未登录" }, 401);
+      const rows = await env.DB.prepare("SELECT id, name, owner, members, ai_members FROM gc_groups WHERE owner = ? OR members LIKE ? ORDER BY created_at DESC")
+        .bind(me, `%"${me}"%`).all();
+      const groups = [];
+      for (const row of rows.results || []) {
+        const last = await env.DB.prepare("SELECT MAX(id) AS maxid FROM gc_messages WHERE group_id = ?").bind(row.id).first();
+        groups.push({
+          id: row.id, name: row.name, owner: row.owner,
+          members: JSON.parse(row.members || "[]"),
+          aiMembers: JSON.parse(row.ai_members || "[]"),
+          lastId: last ? last.maxid || 0 : 0,
+        });
+      }
+      return json({ groups });
+    }
+
+    // 拉群消息（校验成员身份）
+    if (path === "/api/gc/messages" && request.method === "GET") {
+      if (!me) return json({ error: "未登录" }, 401);
+      const gid = url.searchParams.get("group_id") || "";
+      const after = parseInt(url.searchParams.get("after") || "0", 10);
+      const row = await env.DB.prepare("SELECT name, owner, members, ai_members FROM gc_groups WHERE id = ?").bind(gid).first();
+      if (!row) return json({ error: "群不存在" }, 404);
+      const members = JSON.parse(row.members || "[]");
+      if (row.owner !== me && !members.includes(me)) return json({ error: "不是群成员" }, 403);
+      const msgs = await env.DB.prepare("SELECT id, sender, text, created_at FROM gc_messages WHERE group_id = ? AND id > ? ORDER BY id ASC LIMIT 100")
+        .bind(gid, after).all();
+      return json({
+        messages: msgs.results || [],
+        name: row.name, owner: row.owner,
+        members, aiMembers: JSON.parse(row.ai_members || "[]"),
+      });
+    }
+
+    // 发群消息（房主可用 as="ai:角色id" 代AI发言）
+    if (path === "/api/gc/send" && request.method === "POST") {
+      if (!me) return json({ error: "未登录" }, 401);
+      const body = await request.json().catch(() => ({}));
+      const gid = String(body.group_id || "");
+      const text = String(body.text || "").slice(0, 2000);
+      if (!gid || !text.trim()) return json({ error: "参数缺失" }, 400);
+      const row = await env.DB.prepare("SELECT owner, members FROM gc_groups WHERE id = ?").bind(gid).first();
+      if (!row) return json({ error: "群不存在" }, 404);
+      const members = JSON.parse(row.members || "[]");
+      const isOwner = row.owner === me;
+      if (!isOwner && !members.includes(me)) return json({ error: "不是群成员" }, 403);
+      let sender = me;
+      if (body.as && String(body.as).startsWith("ai:")) {
+        if (!isOwner) return json({ error: "只有房主能代AI发言" }, 403);
+        sender = String(body.as);
+      }
+      const ins = await env.DB.prepare("INSERT INTO gc_messages (group_id, sender, text, created_at) VALUES (?, ?, ?, ?)")
+        .bind(gid, sender, text, Date.now()).run();
+      return json({ ok: true, id: ins.meta && ins.meta.last_row_id });
     }
 
     return json({ error: "接口不存在" }, 404);

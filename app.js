@@ -569,6 +569,7 @@ let state = {
   userChats: {},      // username -> [{from:'me'|username, text, ts}]
   activeUserChat: null, // 当前真人聊天对象
   dmLastId: {},       // username -> 已拉取的最大消息 id
+  serverGroups: {},   // gid -> { name, owner, members:[真人], aiMembers:[{id,name,emoji}], chat:[], lastId:0 }
 };
 let currentPanelMsg = null; // 学习面板当前展示的消息
 
@@ -602,6 +603,8 @@ function load() {
   Object.keys(state.userChats).forEach((k) => { if (typeof state.userChats[k] !== "object") delete state.userChats[k]; });
   if (!state.dmLastId || typeof state.dmLastId !== "object") state.dmLastId = {};
   if (state.activeUserChat != null && !state.realFriends.includes(state.activeUserChat)) state.activeUserChat = null;
+  if (!state.serverGroups || typeof state.serverGroups !== "object") state.serverGroups = {};
+  Object.keys(state.serverGroups).forEach((k) => { if (!k.startsWith("gc-")) delete state.serverGroups[k]; });
 }
 
 // ---------------- 数据操作 ----------------
@@ -892,6 +895,11 @@ function render() {
     bindUserChat();
     return;
   }
+  if (state.activeGroup && state.activeGroup.startsWith("gc-")) {
+    app.innerHTML = renderServerGroupChat();
+    bindServerGroupChat();
+    return;
+  }
   const tab = state.tab || "chats";
   if (state.activeGroup) {
     app.innerHTML = renderGroupChat();
@@ -1101,8 +1109,9 @@ function publishMoment(text) {
 // ---------------- 群聊 ----------------
 function openCreateGroup() {
   const added = state.friends.map((id) => friendById(id)).filter(Boolean);
-  if (added.length < 2) {
-    showSystemNote("至少需要 2 个好友才能建群，先去「联系人」添加吧");
+  const realFriends = state.realFriends || [];
+  if (added.length + realFriends.length < 2) {
+    showSystemNote("至少需要 2 个好友（AI 或真人都行）才能建群，先去「联系人」添加吧");
     return;
   }
   const mask = document.createElement("div");
@@ -1115,19 +1124,34 @@ function openCreateGroup() {
       <button class="close" id="closeCreateGroup" style="margin-left:auto">✕</button>
     </div>
     <input id="groupNameInput" class="diary-textarea" style="min-height:0;padding:10px" placeholder="群名字（默认：英语修罗场）">
-    <div class="group-label" style="padding-left:0">选择成员（至少 2 人，你自己会自动进群）</div>
+    <div class="group-label" style="padding-left:0">🤖 AI 角色</div>
     <div class="member-pick">
       ${added
         .map(
           (f) => `
         <label class="member-row">
-          <input type="checkbox" value="${f.id}">
+          <input type="checkbox" value="ai:${f.id}">
           ${avatarHtml(f, "moment-avatar")}
           <span>${f.name}</span>
         </label>`
         )
         .join("")}
     </div>
+    ${realFriends.length ? `
+    <div class="group-label" style="padding-left:0">🧑 真人好友</div>
+    <div class="member-pick">
+      ${realFriends
+        .map(
+          (u) => `
+        <label class="member-row">
+          <input type="checkbox" value="real:${esc(u)}">
+          <div class="avatar moment-avatar" style="background:linear-gradient(135deg,#f7c8d8,#c8e8f7);font-size:16px;font-weight:700;color:#666">${esc(u.charAt(0).toUpperCase())}</div>
+          <span>${esc(u)} <span style="font-size:11px;color:var(--sub)">真人</span></span>
+        </label>`
+        )
+        .join("")}
+    </div>
+    <div class="as-tip" style="margin-top:6px">⚠ 有真人的群走云端，AI 由你的设备驱动——你开着 App 他们才能感受到 AI</div>` : ""}
     <button class="as-btn primary" id="confirmCreateGroup" style="width:100%;margin-top:12px">🔥 创建修罗场</button>
   `;
   app.appendChild(mask);
@@ -1135,18 +1159,39 @@ function openCreateGroup() {
   const close = () => { mask.remove(); panel.remove(); };
   mask.onclick = close;
   panel.querySelector("#closeCreateGroup").onclick = close;
-  panel.querySelector("#confirmCreateGroup").onclick = () => {
-    const memberIds = [...panel.querySelectorAll(".member-row input:checked")].map((el) => el.value);
-    if (memberIds.length < 2) { panel.querySelector("#confirmCreateGroup").textContent = "至少选 2 人！"; return; }
+  panel.querySelector("#confirmCreateGroup").onclick = async () => {
+    const checked = [...panel.querySelectorAll(".member-row input:checked")].map((el) => el.value);
+    const aiIds = checked.filter((v) => v.startsWith("ai:")).map((v) => v.slice(3));
+    const realMembers = checked.filter((v) => v.startsWith("real:")).map((v) => v.slice(5));
+    if (aiIds.length + realMembers.length < 2) { panel.querySelector("#confirmCreateGroup").textContent = "至少选 2 人！"; return; }
     const name = panel.querySelector("#groupNameInput").value.trim() || "英语修罗场";
+
+    if (realMembers.length) {
+      // 混编群：走服务器
+      const btn = panel.querySelector("#confirmCreateGroup");
+      btn.disabled = true; btn.textContent = "创建中…";
+      try {
+        const aiSnap = aiIds.map((id) => { const f = friendById(id); return f ? { id: f.id, name: f.name, emoji: f.emoji } : null; }).filter(Boolean);
+        const r = await api("POST", "/api/gc/create", { name, members: realMembers, ai: aiSnap });
+        await refreshServerGroups();
+        close();
+        state.activeGroup = r.id;
+        render();
+      } catch (e) {
+        btn.disabled = false; btn.textContent = "🔥 创建修罗场";
+        showSystemNote("❌ 建群失败：" + e.message, e.message);
+      }
+      return;
+    }
+
+    // 纯 AI 群：本地（原逻辑）
     const gid = "g" + now();
-    state.groups[gid] = { name, memberIds, chat: [], created: now() };
+    state.groups[gid] = { name, memberIds: aiIds, chat: [], created: now() };
     save();
     close();
     state.activeGroup = gid;
     render();
-    // 群里第一句话：随机一个成员开麦
-    const opener = friendById(memberIds[Math.floor(Math.random() * memberIds.length)]);
+    const opener = friendById(aiIds[Math.floor(Math.random() * aiIds.length)]);
     if (opener) {
       setTimeout(() => {
         const g = state.groups[gid];
@@ -1708,6 +1753,287 @@ function openGroupPanel(idx) {
   panel.querySelector("#speak").onclick = () => speak(m.text, m.from);
 }
 
+// ---------------- 混编群（真人+AI，走云端） ----------------
+async function refreshServerGroups() {
+  const r = await api("GET", "/api/gc/list");
+  for (const g of r.groups || []) {
+    const old = state.serverGroups[g.id];
+    state.serverGroups[g.id] = {
+      ...(old || { chat: [], lastId: 0 }),
+      id: g.id, name: g.name, owner: g.owner,
+      members: g.members, aiMembers: g.aiMembers,
+      lastId: Math.max(old ? old.lastId || 0 : 0, g.lastId || 0),
+    };
+  }
+  save();
+}
+
+// 服务器群消息渲染：sender 可能是 我 / 真人用户名 / "ai:角色id"
+function resolveServerSender(m, g) {
+  if (m.sender === getMyUsername()) return { mine: true, name: userName(), av: myAvatarHtml("msg-avatar") };
+  if (m.sender.startsWith("ai:")) {
+    const cid = m.sender.slice(3);
+    const f = friendById(cid) || (g.aiMembers.find((a) => a.id === cid) || { name: cid.slice(0, 8), emoji: "🤖", color: "#ddd" });
+    return { mine: false, name: f.name, f, av: avatarHtml(f, "msg-avatar") };
+  }
+  return {
+    mine: false, name: m.sender,
+    av: `<div class="avatar msg-avatar" style="background:linear-gradient(135deg,#f7c8d8,#c8e8f7);font-size:20px;font-weight:700;color:#666">${esc(m.sender.charAt(0).toUpperCase())}</div>`,
+  };
+}
+
+function renderServerGroupChat() {
+  const g = state.serverGroups[state.activeGroup];
+  if (!g) { state.activeGroup = null; return render(); }
+  return `
+    <div class="chat-page">
+      <div class="topbar">
+        <span class="back" id="back">‹</span>
+        ${esc(g.name)}（${g.members.length + g.aiMembers.length + 1}人）
+        <span class="action" style="font-size:11px;color:var(--sub)">${g.owner === getMyUsername() ? "你是房主" : "真人"}</span>
+      </div>
+      <div class="msgs" id="msgs">
+        <div class="time-divider">混编修罗场 · 真人和AI同场，AI由房主驱动</div>
+        ${g.chat.map((m, i) => renderServerGroupMsg(m, g, i)).join("")}
+      </div>
+      <div class="inputbar">
+        <textarea id="input" placeholder="说点什么…（@名字 点名）" rows="1"></textarea>
+        <button id="send">发送</button>
+      </div>
+    </div>
+  `;
+}
+
+function renderServerGroupMsg(m, g, i) {
+  const s = resolveServerSender(m, g);
+  const sender = s.mine ? "" : `<div class="g-sender">${esc(s.name)}</div>`;
+  return `
+    <div class="msg ${s.mine ? "me" : "friend"} group-msg">
+      ${s.av}
+      <div class="bubble-wrap">
+        ${sender}
+        <div class="bubble" data-sgmsg="${i}">${esc(m.text).replace(/\n/g, "<br>")}${m.viaAI ? ' <span class="ai-tag">AI</span>' : ""}</div>
+      </div>
+    </div>
+  `;
+}
+
+function bindServerGroupChat() {
+  const g = state.serverGroups[state.activeGroup];
+  if (!g) return;
+  const msgsEl = $("#msgs");
+  msgsEl.scrollTop = msgsEl.scrollHeight;
+
+  $("#back").onclick = () => {
+    clearInterval(window._gcPoll);
+    window._gcPoll = null;
+    state.activeGroup = null;
+    save();
+    render();
+  };
+
+  const input = $("#input");
+  const doSend = () => {
+    const text = input.value.trim();
+    if (!text) return;
+    input.value = "";
+    postServerGroupMessage(g, text, null);
+  };
+  $("#send").onclick = doSend;
+  input.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); doSend(); }
+  });
+  // 点气泡 → 学习面板
+  app.querySelectorAll("[data-sgmsg]").forEach((el) => {
+    el.onclick = () => openServerPanel(parseInt(el.dataset.sgmsg, 10));
+  });
+  // 点头像 → 快速 @（真人名字或 AI 名字）
+  app.querySelectorAll(".msg.friend.group-msg .avatar").forEach((el) => {
+    const msgEl = el.closest(".msg");
+    const idx = parseInt(msgEl.querySelector("[data-sgmsg]")?.dataset.sgmsg, 10);
+    el.onclick = (e) => {
+      e.stopPropagation();
+      const m = g.chat[idx];
+      if (!m) return;
+      const s = resolveServerSender(m, g);
+      const input = $("#input");
+      input.value = (input.value ? input.value + " " : "") + "@" + s.name + " ";
+      input.focus();
+    };
+  });
+
+  // 轮询：拉新消息 + 房主驱动 AI
+  clearInterval(window._gcPoll);
+  const poll = async () => {
+    if (state.activeGroup !== g.id) { clearInterval(window._gcPoll); return; }
+    try {
+      const r = await api("GET", "/api/gc/messages?group_id=" + encodeURIComponent(g.id) + "&after=" + (g.lastId || 0));
+      if (r.name) { g.name = r.name; g.owner = r.owner; g.members = r.members; g.aiMembers = r.aiMembers; }
+      const arr = g.chat;
+      let added = false;
+      for (const msg of r.messages || []) {
+        if (arr.some((x) => x.serverId === msg.id)) continue;
+        arr.push({
+          from: msg.sender === getMyUsername() ? "me" : msg.sender,
+          text: msg.text, ts: msg.created_at,
+          serverId: msg.id,
+          read: state.activeGroup === g.id,
+          viaAI: msg.sender.startsWith("ai:"),
+        });
+        g.lastId = Math.max(g.lastId || 0, msg.id);
+        added = true;
+      }
+      if (added) {
+        save();
+        if (state.activeGroup === g.id) render();
+        // 房主 AI 大脑：最新一条是真人（不是我）发的 → 让 AI 接话
+        const newest = arr[arr.length - 1];
+        const isHumanNewest = newest && newest.from !== "me" && !String(newest.from).startsWith("ai:");
+        const isOwner = g.owner === getMyUsername();
+        if (isOwner && isHumanNewest && !g._aiBusy) {
+          g._aiBusy = true;
+          serverGroupAIRound(g, newest)
+            .catch((e) => showSystemNote("❌ AI 接话失败：" + e.message, e.message))
+            .finally(() => { g._aiBusy = false; });
+        }
+      }
+    } catch (e) {}
+  };
+  poll();
+  window._gcPoll = setInterval(poll, 3000);
+}
+
+async function postServerGroupMessage(g, text, asAiId) {
+  const r = await api("POST", "/api/gc/send", {
+    group_id: g.id,
+    text,
+    ...(asAiId ? { as: "ai:" + asAiId } : {}),
+  });
+  const arr = g.chat;
+  const sender = asAiId ? "ai:" + asAiId : getMyUsername();
+  arr.push({
+    from: sender === getMyUsername() ? "me" : sender,
+    text, ts: now(), serverId: r.id,
+    read: state.activeGroup === g.id, viaAI: !!asAiId,
+  });
+  g.lastId = Math.max(g.lastId || 0, r.id || 0);
+  save();
+  if (state.activeGroup === g.id) render();
+}
+
+// 房主侧：为混编群生成 AI 回复并 POST 到服务器
+async function serverGroupAIRound(g, newMsg) {
+  const aiMembers = (g.aiMembers || []).map((a) => ({ ...a, f: friendById(a.id) })).filter((a) => a.f);
+  if (!aiMembers.length) return;
+  const transcript = g.chat.slice(-10).map((m) => {
+    const s = resolveServerSender(m, g);
+    return `${s.name}: ${m.text}`;
+  }).join("\n");
+  const mentions = aiMembers.filter((a) => newMsg.text.toLowerCase().includes("@" + a.name.toLowerCase())).map((a) => a.name);
+  const system = `You are simulating a fun group chat between AI characters below and human users (the user's name is "${userName()}").
+
+AI characters:
+${aiMembers.map((a) => `- ${a.name}: ${a.f.persona} (Relationship with the user: ${state.relationships[a.id] || a.f.relationship || "good friends"})`).join("\n")}
+
+Real humans in this group: ${["User: " + userName()].concat((g.members || []).map((u) => "User: " + u)).join("; ")}
+
+Rules:
+1. The NEWEST message in the transcript is from a human — at least one AI character MUST respond to it directly first. NEVER ignore humans.
+2. After that, a second AI character may chime in (tease, agree, or add a joke), possibly referencing other humans by name.
+3. 1-2 short sentences per reply, natural spoken English, fully in character. Never repeat previous sentences.
+4. Include vocab/grammar teaching in at most 1 reply (arrays may be empty).
+5. Output ONLY a JSON object, no markdown fences:
+{"replies":[{"from":"AICharacterName","text":"...","vocab":[],"grammar":[]}]}`;
+  const cfg = state.llm || {};
+  if (!cfg.key) return;
+  const p = llmEndpoint(cfg);
+  const res = await fetch(p.url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${cfg.key}` },
+    body: JSON.stringify({
+      model: p.model,
+      messages: [
+        { role: "system", content: system },
+        { role: "user", content: `Group transcript (oldest first):\n${transcript}\n\nWrite the next replies.` + (mentions.length ? ` The user @-mentioned: ${mentions.join(", ")} — they must reply first.` : "") },
+      ],
+      response_format: { type: "json_object" },
+      temperature: cfg.provider === "zhipu" ? 0.95 : 1.1,
+      max_tokens: 600,
+    }),
+  });
+  if (!res.ok) throw new Error("api-" + res.status);
+  const data = await res.json();
+  let s = (data.choices?.[0]?.message?.content || "").trim().replace(/^```(?:json)?\s*/i, "").replace(/```\s*$/, "");
+  const st = s.indexOf("{"), en = s.lastIndexOf("}");
+  if (st === -1) throw new Error("bad-json");
+  const obj = JSON.parse(s.slice(st, en + 1));
+  if (!Array.isArray(obj.replies)) throw new Error("bad-json");
+  let delay = 900;
+  for (const r of obj.replies) {
+    if (!r.text) continue;
+    const member = aiMembers.find((a) => a.name.toLowerCase() === String(r.from || "").toLowerCase());
+    if (!member) continue;
+    const replyText = r.text;
+    const replyVocab = Array.isArray(r.vocab) ? r.vocab.filter((v) => v && v.w && v.m) : [];
+    const replyGram = Array.isArray(r.grammar) ? r.grammar.filter((x) => x && x.pattern && x.explain) : [];
+    setTimeout(async () => {
+      const gg = state.serverGroups[g.id];
+      if (!gg) return;
+      await postServerGroupMessageWithTeach(gg, replyText, member.id, replyVocab, replyGram);
+    }, delay);
+    delay += 1800;
+  }
+}
+
+async function postServerGroupMessageWithTeach(g, text, aiId, vocab, grammar) {
+  const r = await api("POST", "/api/gc/send", { group_id: g.id, text, as: "ai:" + aiId });
+  const arr = g.chat;
+  arr.push({
+    from: "ai:" + aiId, text, ts: now(), serverId: r.id,
+    vocab: vocab || [], grammar: grammar || [],
+    read: state.activeGroup === g.id, viaAI: true,
+  });
+  g.lastId = Math.max(g.lastId || 0, r.id || 0);
+  save();
+  if (state.activeGroup === g.id) render();
+}
+
+// 混编群学习面板
+function openServerPanel(idx) {
+  const g = state.serverGroups[state.activeGroup];
+  const m = g.chat[idx];
+  if (!m) return;
+  currentPanelMsg = { ...m, friendId: m.from.startsWith("ai:") ? m.from.slice(3) : null };
+  if (!m.from.startsWith("ai:") && !m.viewed) { m.viewed = true; state.learned++; save(); }
+  const vocabHtml = (m.vocab || [])
+    .map((v) => `<div class="vocab-item"><span class="w">${esc(v.w)}</span><span class="p">${esc(v.p || "")}</span><div class="m">${esc(v.m)}</div></div>`)
+    .join("");
+  const gramHtml = (m.grammar || [])
+    .map((x) => `<div class="gram-item"><b>${esc(x.pattern)}</b><br>${esc(x.explain)}</div>`)
+    .join("");
+  const mask = document.createElement("div");
+  mask.className = "panel-mask";
+  const panel = document.createElement("div");
+  panel.className = "panel";
+  panel.innerHTML = `
+    <div class="panel-head">
+      <button class="speak-btn" id="speak">🔊 朗读</button>
+      <div class="quote">“${esc(m.text).slice(0, 40)}${m.text.length > 40 ? "…" : ""}”</div>
+      <button class="close" id="closePanel">✕</button>
+    </div>
+    ${m.from === "me" ? `<div class="empty-tip">这是你发的消息</div>` : ""}
+    ${vocabHtml ? `<div class="sec-title">📖 生词</div>${vocabHtml}` : ""}
+    ${gramHtml ? `<div class="sec-title">🧩 语法</div>${gramHtml}` : ""}
+    ${!vocabHtml && !gramHtml && !m.from.startsWith("ai:") ? `<div class="empty-tip">真人消息没有讲解</div>` : ""}
+  `;
+  app.appendChild(mask);
+  app.appendChild(panel);
+  const close = () => { mask.remove(); panel.remove(); currentPanelMsg = null; if (window.speechSynthesis) speechSynthesis.cancel(); };
+  mask.onclick = close;
+  panel.querySelector("#closePanel").onclick = close;
+  panel.querySelector("#speak").onclick = () => speak(m.text, m.from.startsWith("ai:") ? m.from.slice(3) : null);
+}
+
 function openDiary() {
   const today = todayStr();
   const entry = state.diary[today];
@@ -1946,7 +2272,23 @@ function renderChatList() {
       </div>`;
     })
     .join("");
-  return `<div class="cell create-group-cell" id="createGroupBtn"><div class="avatar" style="background:#e8f9ee">➕</div><div class="info"><div class="name" style="color:var(--green)">发起群聊</div><div class="preview">拉上好友一起修罗场</div></div></div>` + items + (groupCells ? `<div class="group-label">群聊</div>` + groupCells : "") + (userCells ? `<div class="group-label">真人好友</div>` + userCells : "");
+  // 服务器混编群列表
+  const serverCells = Object.values(state.serverGroups || {})
+    .map((g) => {
+      const last = g.chat[g.chat.length - 1];
+      const unread = g.chat.filter((m) => m.from !== "me" && !m.read).length;
+      return `
+      <div class="cell" data-group="${esc(g.id)}">
+        <div class="avatar" style="background:linear-gradient(135deg,#e8c8f7,#f7d8c8)">🌐</div>
+        <div class="info">
+          <div class="name">${esc(g.name)} <span style="font-size:10px;color:var(--sub)">混编</span></div>
+          <div class="preview">${last ? esc(last.text) : "群里还没人说话"}</div>
+        </div>
+        <div class="meta">${last ? fmtTime(last.ts) : ""}${unread ? `<br><span class="badge">${unread}</span>` : ""}</div>
+      </div>`;
+    })
+    .join("");
+  return `<div class="cell create-group-cell" id="createGroupBtn"><div class="avatar" style="background:#e8f9ee">➕</div><div class="info"><div class="name" style="color:var(--green)">发起群聊</div><div class="preview">拉上好友一起修罗场</div></div></div>` + items + (groupCells || serverCells ? `<div class="group-label">群聊</div>` + groupCells + serverCells : "") + (userCells ? `<div class="group-label">真人好友</div>` + userCells : "");
 }
 
 function renderContacts() {
@@ -2082,12 +2424,24 @@ function bindMain(tab) {
   app.querySelectorAll("[data-group]").forEach((el) => {
     el.onclick = () => {
       state.activeGroup = el.dataset.group;
-      const g = state.groups[state.activeGroup];
-      if (g) g.chat.forEach((m) => (m.read = true));
+      if (state.activeGroup.startsWith("gc-")) {
+        const g = state.serverGroups[state.activeGroup];
+        if (g) g.chat.forEach((m) => (m.read = true));
+      } else {
+        const g = state.groups[state.activeGroup];
+        if (g) g.chat.forEach((m) => (m.read = true));
+      }
       save();
       render();
     };
   });
+  if (tab === "chats" && getToken()) {
+    // 静默刷新混编群列表（5秒内不重复拉）
+    if (!window._lastSgRefresh || now() - window._lastSgRefresh > 5000) {
+      window._lastSgRefresh = now();
+      refreshServerGroups().then(() => { if (state.tab === "chats" && !state.activeGroup) render(); });
+    }
+  }
   const createGroupBtn = $("#createGroupBtn");
   if (createGroupBtn) createGroupBtn.onclick = openCreateGroup;
 
@@ -2577,6 +2931,7 @@ if (!getToken()) {
   ensureDailyMoments();  // 每日好友动态
   maybeProactivePing();  // 主动私聊（失踪戳 + 生日祝福）
   render();
+  refreshServerGroups().then(() => { if (!state.activeGroup && !state.activeFriend && !state.activeUserChat) render(); });
   // 后台拉云端：其他设备可能有更新
   api("GET", "/api/data").then((r) => {
     if (!r.data) { queueCloudSync(); return; }
