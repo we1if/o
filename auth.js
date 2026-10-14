@@ -3,7 +3,10 @@ const AUTH_KEYS = { token: "bczf_token", username: "bczf_username", api: "bczf_a
 
 function getToken() { return localStorage.getItem(AUTH_KEYS.token) || ""; }
 function getMyUsername() { return localStorage.getItem(AUTH_KEYS.username) || ""; }
-function getApiUrl() { return (localStorage.getItem(AUTH_KEYS.api) || "").replace(/\/$/, ""); }
+function getApiUrl() {
+  // 默认用已部署的官方后端；用户在登录页"服务器设置"里填过则以填的为准
+  return (localStorage.getItem(AUTH_KEYS.api) || "https://bczf-backend.p50630759.workers.dev").replace(/\/$/, "");
+}
 function setAuth(token, username) {
   localStorage.setItem(AUTH_KEYS.token, token);
   localStorage.setItem(AUTH_KEYS.username, username);
