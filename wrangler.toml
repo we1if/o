@@ -1,0 +1,8 @@
+name = "bczf-backend"
+main = "worker.js"
+compatibility_date = "2026-10-01"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "bczf-db"
+database_id = "933b1ed7-4b27-48ad-9426-b43d2491ecdb"
