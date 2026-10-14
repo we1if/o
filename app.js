@@ -564,6 +564,11 @@ let state = {
   lastPingDate: {},   // fid -> 最后主动私聊日期
   msgCount: {},       // fid -> 用户消息计数（每6条触发记忆总结）
   birthday: "",       // 'MM-DD' 用户生日
+  realFriends: [],    // 真人好友用户名列表（来自服务器）
+  friendRequests: [], // 收到的好友申请 [{from, created_at}]
+  userChats: {},      // username -> [{from:'me'|username, text, ts}]
+  activeUserChat: null, // 当前真人聊天对象
+  dmLastId: {},       // username -> 已拉取的最大消息 id
 };
 let currentPanelMsg = null; // 学习面板当前展示的消息
 
@@ -591,6 +596,12 @@ function load() {
   if (!state.lastChatTime || typeof state.lastChatTime !== "object") state.lastChatTime = {};
   if (!state.lastPingDate || typeof state.lastPingDate !== "object") state.lastPingDate = {};
   if (!state.msgCount || typeof state.msgCount !== "object") state.msgCount = {};
+  if (!Array.isArray(state.realFriends)) state.realFriends = [];
+  if (!Array.isArray(state.friendRequests)) state.friendRequests = [];
+  if (!state.userChats || typeof state.userChats !== "object") state.userChats = {};
+  Object.keys(state.userChats).forEach((k) => { if (typeof state.userChats[k] !== "object") delete state.userChats[k]; });
+  if (!state.dmLastId || typeof state.dmLastId !== "object") state.dmLastId = {};
+  if (state.activeUserChat != null && !state.realFriends.includes(state.activeUserChat)) state.activeUserChat = null;
 }
 
 // ---------------- 数据操作 ----------------
@@ -876,6 +887,11 @@ function speak(text, friendId) {
 // ---------------- 渲染：主框架 ----------------
 function render() {
   if (!getToken()) { renderAuthScreen("login"); return; } // 未登录 → 登录界面
+  if (state.activeUserChat) {
+    app.innerHTML = renderUserChat();
+    bindUserChat();
+    return;
+  }
   const tab = state.tab || "chats";
   if (state.activeGroup) {
     app.innerHTML = renderGroupChat();
@@ -912,6 +928,7 @@ function renderMain(tab) {
         <div class="tab ${tab === t.key ? "on" : ""}" data-tab="${t.key}">
           <span class="icon">${t.icon}</span>${t.label}
           ${t.key === "chats" && totalUnread > 0 ? `<span class="dot">${totalUnread}</span>` : ""}
+          ${t.key === "contacts" && (state.friendRequests || []).length ? `<span class="dot">${state.friendRequests.length}</span>` : ""}
         </div>`
         )
         .join("")}
@@ -1279,6 +1296,116 @@ function birthdayWish(f) {
     sunwoo: `Yo!! Happy birthday!! 🎂 Basketball rematch later — birthday rules: you pick the court, I still win.`,
   };
   return pool[f.id] || `Happy birthday! 🎂 Wishing you the best day ever.`;
+}
+
+// ---------------- 真人私聊 ----------------
+async function refreshSocial() {
+  if (!getToken()) return;
+  try {
+    const [f, r] = await Promise.all([api("GET", "/api/friends"), api("GET", "/api/friends/requests")]);
+    state.realFriends = f.friends || [];
+    state.friendRequests = r.requests || [];
+    save();
+  } catch (e) {}
+}
+
+function renderUserChat() {
+  const uname = state.activeUserChat;
+  const msgs = state.userChats[uname] || [];
+  return `
+    <div class="chat-page">
+      <div class="topbar">
+        <span class="back" id="back">‹</span>
+        ${esc(uname)}
+        <span class="action" style="font-size:11px;color:var(--sub)">真人</span>
+      </div>
+      <div class="msgs" id="msgs">
+        <div class="time-divider">和真人用英语聊，错词没人给你标——大胆写</div>
+        ${msgs
+          .map(
+            (m) => `
+          <div class="msg ${m.from === "me" ? "me" : "friend"}">
+            ${
+              m.from === "me"
+                ? myAvatarHtml("msg-avatar")
+                : `<div class="avatar" style="background:linear-gradient(135deg,#f7c8d8,#c8e8f7);font-size:20px;font-weight:700;color:#666">${esc(uname.charAt(0).toUpperCase())}</div>`
+            }
+            <div class="bubble-wrap"><div class="bubble">${esc(m.text).replace(/\n/g, "<br>")}</div></div>
+          </div>`
+          )
+          .join("")}
+      </div>
+      <div class="inputbar">
+        <textarea id="input" placeholder="Type something..." rows="1"></textarea>
+        <button id="send">发送</button>
+      </div>
+    </div>
+  `;
+}
+
+function bindUserChat() {
+  const uname = state.activeUserChat;
+  const msgsEl = $("#msgs");
+  msgsEl.scrollTop = msgsEl.scrollHeight;
+
+  $("#back").onclick = () => {
+    clearInterval(window._dmPoll);
+    window._dmPoll = null;
+    state.activeUserChat = null;
+    save();
+    render();
+  };
+
+  const input = $("#input");
+  const doSend = async () => {
+    const text = input.value.trim();
+    if (!text) return;
+    input.value = "";
+    try {
+      await api("POST", "/api/dm/send", { to: uname, text });
+      const arr = state.userChats[uname] = state.userChats[uname] || [];
+      arr.push({ from: "me", text, ts: now(), read: true });
+      save();
+      render();
+    } catch (e) {
+      showSystemNote("❌ 发送失败：" + e.message, e.message);
+    }
+  };
+  $("#send").onclick = doSend;
+  input.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); doSend(); }
+  });
+
+  // 3 秒轮询新消息
+  clearInterval(window._dmPoll);
+  const poll = async () => {
+    if (state.activeUserChat !== uname) { clearInterval(window._dmPoll); return; }
+    try {
+      const after = state.dmLastId[uname] || 0;
+      const r = await api("GET", "/api/dm?with=" + encodeURIComponent(uname) + "&after=" + after);
+      const arr = state.userChats[uname] = state.userChats[uname] || [];
+      let added = false;
+      for (const msg of r.messages || []) {
+        arr.push({
+          from: msg.sender === getMyUsername() ? "me" : uname,
+          text: msg.text,
+          ts: msg.created_at,
+          read: state.activeUserChat === uname,
+        });
+        state.dmLastId[uname] = Math.max(state.dmLastId[uname] || 0, msg.id);
+        added = true;
+      }
+      if (added) {
+        save();
+        if (state.activeUserChat === uname) {
+          render();
+          if (window.speechSynthesis) { /* 真人消息不自动朗读 */ }
+        }
+      }
+    } catch (e) {}
+  };
+  poll();
+  window._dmPoll = setInterval(poll, 3000);
 }
 
 // ---------------- 群聊界面 ----------------
@@ -1792,11 +1919,62 @@ function renderChatList() {
       </div>`;
     })
     .join("");
-  return `<div class="cell create-group-cell" id="createGroupBtn"><div class="avatar" style="background:#e8f9ee">➕</div><div class="info"><div class="name" style="color:var(--green)">发起群聊</div><div class="preview">拉上好友一起修罗场</div></div></div>` + items + (groupCells ? `<div class="group-label">群聊</div>` + groupCells : "");
+  // 真人好友列表
+  const userCells = (state.realFriends || [])
+    .map((uname) => {
+      const msgs = state.userChats[uname] || [];
+      const last = msgs[msgs.length - 1];
+      const unread = msgs.filter((m) => m.from !== "me" && !m.read).length;
+      const initial = uname.charAt(0).toUpperCase();
+      return `
+      <div class="cell" data-user-chat="${esc(uname)}">
+        <div class="avatar" style="background:linear-gradient(135deg,#f7c8d8,#c8e8f7);font-size:20px;font-weight:700;color:#666">${esc(initial)}</div>
+        <div class="info">
+          <div class="name">${esc(uname)} <span style="font-size:10px;color:var(--sub)">真人</span></div>
+          <div class="preview">${last ? esc(last.text) : "打个招呼吧"}</div>
+        </div>
+        <div class="meta">${last ? fmtTime(last.ts) : ""}${unread ? `<br><span class="badge">${unread}</span>` : ""}</div>
+      </div>`;
+    })
+    .join("");
+  return `<div class="cell create-group-cell" id="createGroupBtn"><div class="avatar" style="background:#e8f9ee">➕</div><div class="info"><div class="name" style="color:var(--green)">发起群聊</div><div class="preview">拉上好友一起修罗场</div></div></div>` + items + (groupCells ? `<div class="group-label">群聊</div>` + groupCells : "") + (userCells ? `<div class="group-label">真人好友</div>` + userCells : "");
 }
 
 function renderContacts() {
   const addedIds = state.friends; // friends 数组本身就是 id 字符串数组
+  const pending = state.friendRequests || [];
+  const pendingHtml = pending.length
+    ? `<div class="group-label">收到的好友申请</div>` +
+      pending
+        .map(
+          (r) => `
+      <div class="cell">
+        <div class="avatar" style="background:linear-gradient(135deg,#f7c8d8,#c8e8f7);font-size:20px;font-weight:700;color:#666">${esc(r.from.charAt(0).toUpperCase())}</div>
+        <div class="info"><div class="name">${esc(r.from)}</div><div class="preview">请求加你为好友</div></div>
+        <button class="addbtn" data-accept-user="${esc(r.from)}">同意</button>
+      </div>`
+        )
+        .join("")
+    : "";
+  const searchHtml = `
+    <div class="group-label">🔍 添加真人好友（输对方用户名）</div>
+    <div class="search-row">
+      <input id="userSearchInput" placeholder="输入用户名搜索…" maxlength="20">
+      <button id="userSearchBtn">搜索</button>
+    </div>
+    <div id="searchResults"></div>`;
+  const realHtml = (state.realFriends || []).length
+    ? `<div class="group-label">我的真人好友</div>` +
+      (state.realFriends || [])
+        .map(
+          (uname) => `
+      <div class="cell" data-user-chat="${esc(uname)}">
+        <div class="avatar" style="background:linear-gradient(135deg,#f7c8d8,#c8e8f7);font-size:20px;font-weight:700;color:#666">${esc(uname.charAt(0).toUpperCase())}</div>
+        <div class="info"><div class="name">${esc(uname)}</div><div class="preview">真人好友 · 点开聊天</div></div>
+      </div>`
+        )
+        .join("")
+    : "";
   const rows = FRIENDS.map((f) => {
     const added = addedIds.includes(f.id);
     return `
@@ -1809,7 +1987,7 @@ function renderContacts() {
       <button class="addbtn" data-add="${f.id}" ${added ? "disabled" : ""}>${added ? "已添加" : "添加"}</button>
     </div>`;
   }).join("");
-  return `<div class="group-label">推荐好友 · 后续会扩充更多艺人</div>` + rows;
+  return searchHtml + pendingHtml + realHtml + `<div class="group-label">AI 好友 · 后续会扩充更多艺人</div>` + rows;
 }
 
 // ---------------- 渲染：聊天详情 ----------------
@@ -1935,6 +2113,67 @@ function bindMain(tab) {
       if (e.key === "Enter") doPost();
     };
   }
+
+  // 联系人页：搜真人 / 同意申请 / 进真人聊天
+  if (tab === "contacts") {
+    refreshSocial().then(() => { if (state.tab === "contacts" && !state.activeFriend) render(); });
+    const searchBtn = $("#userSearchBtn");
+    if (searchBtn) {
+      const doSearch = async () => {
+        const q = $("#userSearchInput").value.trim();
+        const out = $("#searchResults");
+        if (!q) return;
+        out.innerHTML = `<div class="as-tip" style="padding:8px 0">搜索中…</div>`;
+        try {
+          const r = await api("GET", "/api/users/search?q=" + encodeURIComponent(q));
+          const users = (r.users || []).filter((u) => u !== getMyUsername());
+          if (!users.length) { out.innerHTML = `<div class="as-tip" style="padding:8px 0">没找到这个用户</div>`; return; }
+          out.innerHTML = users
+            .map(
+              (u) => `
+            <div class="cell" style="padding:8px 0">
+              <div class="avatar" style="width:36px;height:36px;font-size:17px;background:linear-gradient(135deg,#f7c8d8,#c8e8f7);font-weight:700;color:#666">${esc(u.charAt(0).toUpperCase())}</div>
+              <div class="info"><div class="name">${esc(u)}</div></div>
+              <button class="addbtn" data-add-user="${esc(u)}">加好友</button>
+            </div>`
+            )
+            .join("");
+          out.querySelectorAll("[data-add-user]").forEach((el) => {
+            el.onclick = async () => {
+              el.disabled = true;
+              try {
+                const r2 = await api("POST", "/api/friends/request", { to: el.dataset.addUser });
+                el.textContent = r2.accepted ? "✓ 已互加" : "✓ 已申请";
+              } catch (e) {
+                el.textContent = e.message;
+              }
+            };
+          });
+        } catch (e) {
+          out.innerHTML = `<div class="as-tip" style="padding:8px 0">搜索失败：${esc(e.message)}</div>`;
+        }
+      };
+      searchBtn.onclick = doSearch;
+      $("#userSearchInput").onkeydown = (e) => { if (e.key === "Enter") doSearch(); };
+    }
+    app.querySelectorAll("[data-accept-user]").forEach((el) => {
+      el.onclick = async () => {
+        try {
+          await api("POST", "/api/friends/accept", { from: el.dataset.acceptUser });
+          await refreshSocial();
+          render();
+        } catch (e) { showSystemNote("❌ " + e.message); }
+      };
+    });
+  }
+  app.querySelectorAll("[data-user-chat]").forEach((el) => {
+    el.onclick = () => {
+      state.activeUserChat = el.dataset.userChat;
+      (state.userChats[state.activeUserChat] || []).forEach((m) => (m.read = true));
+      save();
+      render();
+    };
+  });
 
   const saveNameBtn = $("#saveName");
   if (saveNameBtn) {
