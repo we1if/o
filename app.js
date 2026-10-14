@@ -1299,14 +1299,23 @@ function birthdayWish(f) {
 }
 
 // ---------------- 真人私聊 ----------------
+// 拉好友+申请；返回 true 表示数据有变化（调用方自行决定要不要重渲染）
 async function refreshSocial() {
-  if (!getToken()) return;
+  if (!getToken()) return false;
   try {
     const [f, r] = await Promise.all([api("GET", "/api/friends"), api("GET", "/api/friends/requests")]);
-    state.realFriends = f.friends || [];
-    state.friendRequests = r.requests || [];
-    save();
-  } catch (e) {}
+    const nf = f.friends || [];
+    const nr = r.requests || [];
+    const changed =
+      JSON.stringify(nf) !== JSON.stringify(state.realFriends) ||
+      JSON.stringify(nr) !== JSON.stringify(state.friendRequests);
+    state.realFriends = nf;
+    state.friendRequests = nr;
+    if (changed) save();
+    return changed;
+  } catch (e) {
+    return false;
+  }
 }
 
 function renderUserChat() {
@@ -2116,7 +2125,7 @@ function bindMain(tab) {
 
   // 联系人页：搜真人 / 同意申请 / 进真人聊天
   if (tab === "contacts") {
-    refreshSocial().then(() => { if (state.tab === "contacts" && !state.activeFriend) render(); });
+    refreshSocial().then((changed) => { if (changed && state.tab === "contacts" && !state.activeFriend) render(); });
     const searchBtn = $("#userSearchBtn");
     if (searchBtn) {
       const doSearch = async () => {
