@@ -123,7 +123,15 @@ function renderAuthScreen(mode) {
         state._syncedAt = now();
         await api("PUT", "/api/data", { data: JSON.stringify(state) }).catch(() => {});
       } else {
-        await adoptServerData();
+        // 老账号：比较本地和服务器谁更新，新的赢（防止重登丢数据）
+        const d = await api("GET", "/api/data");
+        const serverState = d.data ? JSON.parse(d.data) : null;
+        const serverAt = (serverState && serverState._syncedAt) || d.updated_at || 0;
+        if ((state._syncedAt || 0) >= serverAt) {
+          await api("PUT", "/api/data", { data: JSON.stringify(state) }).catch(() => {});
+        } else if (serverState && Array.isArray(serverState.friends)) {
+          state = serverState;
+        }
       }
       load();
       render();
