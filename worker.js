@@ -98,7 +98,7 @@ export default {
       const hash = await hashPassword(password, user.salt);
       if (hash !== user.hash) return json({ error: "密码错误" }, 401);
       const token = randToken();
-      await env.DB.prepare("INSERT INTO tokens (token, user_id, created_at) VALUES (?, ?, ?)").bind(token, user.id, Date.now());
+      await env.DB.prepare("INSERT INTO tokens (token, user_id, created_at) VALUES (?, ?, ?)").bind(token, user.id, Date.now()).run();
       const dataRow = await env.DB.prepare("SELECT data FROM user_data WHERE user_id = ?").bind(user.id).first();
       return json({ token, username, hasData: !!dataRow });
     }
@@ -137,7 +137,7 @@ export default {
       const ts = Date.now();
       await env.DB.prepare(
         "INSERT INTO user_data (user_id, data, updated_at) VALUES (?, ?, ?) ON CONFLICT(user_id) DO UPDATE SET data = excluded.data, updated_at = excluded.updated_at"
-      ).bind(userId, data, ts);
+      ).bind(userId, data, ts).run();
       return json({ ok: true, updated_at: ts });
     }
 
