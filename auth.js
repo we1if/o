@@ -34,6 +34,7 @@ async function api(method, path, body) {
 // 云同步：save() 里防抖 1.5s 后推送；打开 App 时拉取合并
 let syncTimer = null;
 let syncState = "idle"; // idle | syncing | synced | error
+let syncErr = "";
 function queueCloudSync() {
   if (!getToken()) return;
   syncState = "syncing";
@@ -44,8 +45,11 @@ function queueCloudSync() {
       state._syncedAt = now();
       await api("PUT", "/api/data", { data: JSON.stringify(state) });
       syncState = "synced";
+      syncErr = "";
     } catch (e) {
       syncState = "error";
+      syncErr = e.message;
+      console.warn("云同步失败：", e.message); // 原因只进控制台，不上UI
     }
     updateSyncBadge();
   }, 1500);

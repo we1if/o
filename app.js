@@ -2123,12 +2123,7 @@ function renderMe() {
         <span class="me-label">当前</span>
         <div style="flex:1;font-size:14px">@${esc(getMyUsername())} <span id="syncBadge" style="font-size:11px"></span></div>
       </div>
-      <button class="as-btn" id="logoutBtn" style="width:100%;color:#c0392b">退出登录（数据已存云端，换设备登录可找回）</button>
-      <div style="display:flex;gap:8px;margin-top:8px">
-        <button class="as-btn" id="pushCloud" style="flex:1">⬆ 推送本机数据</button>
-        <button class="as-btn" id="pullCloud" style="flex:1">⬇ 恢复云端数据</button>
-      </div>
-      <div class="as-tip" style="margin-top:6px">两台设备内容不一致时：在数据最全的那台点"推送"，另一台点"恢复"</div>
+      <button class="as-btn" id="logoutBtn" style="width:100%;color:#c0392b">退出登录</button>
     </div>
     <div class="me-card">
       <div class="me-card-title">👤 我的信息</div>
@@ -2577,44 +2572,6 @@ function bindMain(tab) {
   }
   const meAvatar = $("#meAvatar");
   if (meAvatar) meAvatar.onclick = () => openAvatarSettings("me");
-  const pushBtn = $("#pushCloud");
-  if (pushBtn) {
-    pushBtn.onclick = async () => {
-      pushBtn.disabled = true;
-      pushBtn.textContent = "推送中…";
-      try {
-        state._syncedAt = now();
-        await api("PUT", "/api/data", { data: JSON.stringify(state) });
-        pushBtn.textContent = "✓ 已推上云";
-        localStorage.setItem("bczf", JSON.stringify(state));
-      } catch (e) {
-        pushBtn.textContent = "✗ 失败：" + e.message;
-      }
-      setTimeout(() => { pushBtn.disabled = false; pushBtn.textContent = "⬆ 推送本机数据"; }, 2000);
-    };
-  }
-  const pullBtn = $("#pullCloud");
-  if (pullBtn) {
-    pullBtn.onclick = async () => {
-      if (!confirm("确定用云端数据覆盖本机吗？\n本机上次同步之后的新内容会被覆盖。")) return;
-      pullBtn.disabled = true;
-      pullBtn.textContent = "恢复中…";
-      try {
-        const r = await api("GET", "/api/data");
-        if (!r.data) { pullBtn.textContent = "云端是空的"; }
-        else {
-          state = JSON.parse(r.data);
-          load();
-          save();
-          render();
-          return;
-        }
-      } catch (e) {
-        pullBtn.textContent = "✗ 失败：" + e.message;
-      }
-      setTimeout(() => { pullBtn.disabled = false; pullBtn.textContent = "⬇ 恢复云端数据"; }, 2000);
-    };
-  }
   const logoutBtn = $("#logoutBtn");
   if (logoutBtn) {
     logoutBtn.onclick = () => {
@@ -2966,6 +2923,22 @@ function squashSquare(dataUrl, size, cb) {
 }
 
 // ---------------- 启动 ----------------
+// 云端手动推/拉（不出现在界面里；需要时在控制台执行 __pushCloud() 或 __pullCloud()）
+window.__pushCloud = async function () {
+  state._syncedAt = now();
+  await api("PUT", "/api/data", { data: JSON.stringify(state) });
+  localStorage.setItem("bczf", JSON.stringify(state));
+  return "✓ 本机数据已推上云";
+};
+window.__pullCloud = async function () {
+  const r = await api("GET", "/api/data");
+  if (!r.data) return "云端是空的";
+  state = JSON.parse(r.data);
+  load();
+  save();
+  render();
+  return "✓ 已用云端数据覆盖本机";
+};
 load();
 if (!getToken()) {
   renderAuthScreen("login");
